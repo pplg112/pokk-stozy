@@ -36,13 +36,14 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   onSearchChange,
 }) => {
   const [internalList, setInternalList] = useState<DigitalProduct[]>(DIGITAL_PRODUCTS);
-  const productsList = products || internalList;
+  const productsList = products !== undefined ? products : internalList;
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory>("all");
   const [sortBy, setSortBy] = useState<"popular" | "rating" | "name">("popular");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Fetch updated products from API on mount
+  // Fetch updated products from API on mount only if not supplied by parent
   useEffect(() => {
+    if (products !== undefined) return;
     fetch("/api/products", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
@@ -53,7 +54,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
       .catch(() => {
         // Fallback to static data
       });
-  }, []);
+  }, [products]);
 
   // Reset to page 1 whenever filters change
   const handleCategoryChange = (catId: ProductCategory) => {
