@@ -20,7 +20,11 @@ import {
   Sparkles, 
   Terminal, 
   AlertCircle,
-  X
+  X,
+  Loader2,
+  Bot,
+  Key,
+  Cpu
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
@@ -35,6 +39,14 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
+  // Gemini AI & Auto-Pilot State
+  const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [tempApiKey, setTempApiKey] = useState("");
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiStatusMessage, setAiStatusMessage] = useState("");
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -96,7 +108,19 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     loadData();
+    const savedKey = typeof window !== "undefined" ? localStorage.getItem("pokky_gemini_api_key") || "" : "";
+    setGeminiApiKey(savedKey);
+    setTempApiKey(savedKey);
   }, []);
+
+  const handleSaveApiKey = () => {
+    const trimmed = tempApiKey.trim();
+    localStorage.setItem("pokky_gemini_api_key", trimmed);
+    setGeminiApiKey(trimmed);
+    setIsApiKeyModalOpen(false);
+    setMessage(trimmed ? "บันทึก Google Gemini API Key เรียบร้อยแล้ว (เปิดใช้ AI Auto-Pilot ขั้นสูง)" : "ยกเลิกการใช้ Gemini Key (กลับสู่ระบบ Built-in Parser)");
+    setTimeout(() => setMessage(""), 4500);
+  };
 
   const handleLogout = async () => {
     try {
@@ -145,39 +169,155 @@ export default function AdminDashboardPage() {
     setIsModalOpen(true);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  // Process File with Gemini AI Auto-Pilot
+  const processFileWithAI = async (file: File) => {
     if (!file) return;
 
     setUploading(true);
-    const body = new FormData();
-    body.append("file", file);
+    setIsAnalyzing(true);
+    setAiStatusMessage("กำลังอ่านและอัปโหลดไฟล์สคริปต์...");
 
     try {
-      const res = await fetch("/api/admin/upload", {
+      // 1. Upload file to storage
+      const body = new FormData();
+      body.append("file", file);
+
+      const uploadRes = await fetch("/api/admin/upload", {
         method: "POST",
         credentials: "include",
         headers: getAuthHeaders(),
         body,
       });
-      const data = await res.json();
-      if (data.success) {
+      const uploadData = await uploadRes.json();
+
+      if (!uploadData.success) {
+        alert(uploadData.error || "ไม่สามารถอ่านไฟล์ได้");
+        return;
+      }
+
+      const scriptContent = uploadData.content || "";
+      const fileFormat = uploadData.fileFormat || ".BAT";
+      const fileSize = uploadData.fileSize || "50 KB";
+
+      // 2. Call Gemini AI / Parser analysis
+      setAiStatusMessage(
+        geminiApiKey
+          ? "Google Gemini AI กำลังวิเคราะห์โค้ด ปรับแต่งข้อมูล และสร้าง Revert Script..."
+          : "ระบบ Built-in AI Parser กำลังวิเคราะห์โค้ดสคริปต์..."
+      );
+
+      const analyzeRes = await fetch("/api/admin/ai-analyze", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({
+          filename: file.name,
+          content: scriptContent,
+          userApiKey: geminiApiKey,
+        }),
+      });
+
+      const analyzeData = await analyzeRes.json();
+
+      if (analyzeData.success && analyzeData.data) {
+        const d = analyzeData.data;
+        setFormData((prev) => ({
+          ...prev,
+          name: d.name || prev.name || file.name.replace(/\.[^/.]+$/, ""),
+          category: d.category || prev.category,
+          tagline: d.tagline || prev.tagline,
+          description: d.description || prev.description,
+          compatibility: d.compatibility || prev.compatibility,
+          fileFormat: fileFormat,
+          fileSize: fileSize,
+          scriptContent: scriptContent,
+          revertScript: d.revertScript || prev.revertScript,
+        }));
+
+        const engineLabel = analyzeData.isGemini
+          ? `Google Gemini AI (${analyzeData.model || "Flash"})`
+          : "ระบบ AI Parser";
+        setMessage(`[AI Auto-Pilot] ${engineLabel} วิเคราะห์สคริปต์และกรอกข้อมูลครบทุกช่องอัตโนมัติแล้ว!`);
+        setTimeout(() => setMessage(""), 5000);
+      } else {
+        // Fallback: at least set basic uploaded file data
         setFormData((prev) => ({
           ...prev,
           name: prev.name || file.name.replace(/\.[^/.]+$/, ""),
-          fileFormat: data.fileFormat,
-          fileSize: data.fileSize,
-          scriptContent: data.content || prev.scriptContent,
+          fileFormat: fileFormat,
+          fileSize: fileSize,
+          scriptContent: scriptContent,
         }));
         setMessage(`อัปโหลดไฟล์ "${file.name}" สำเร็จและนำโค้ดเข้าสู่ระบบแล้ว`);
         setTimeout(() => setMessage(""), 4000);
-      } else {
-        alert(data.error || "เกิดข้อผิดพลาดในการอัปโหลด");
       }
-    } catch {
-      alert("เกิดข้อผิดพลาดในการส่งไฟล์");
+    } catch (err) {
+      console.error(err);
+      alert("เกิดข้อผิดพลาดในการประมวลผลด้วย AI");
     } finally {
       setUploading(false);
+      setIsAnalyzing(false);
+      setAiStatusMessage("");
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await processFileWithAI(file);
+    }
+  };
+
+  // Re-analyze existing code in Text Editor with Gemini AI
+  const handleTriggerAiAnalysis = async () => {
+    if (!formData.scriptContent) {
+      alert("กรุณาใส่โค้ดสคริปต์ก่อนให้ AI วิเคราะห์");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAiStatusMessage(
+      geminiApiKey
+        ? "Google Gemini AI กำลังวิเคราะห์โค้ดที่แก้ไข..."
+        : "ระบบ Built-in AI Parser กำลังวิเคราะห์โค้ด..."
+    );
+
+    try {
+      const analyzeRes = await fetch("/api/admin/ai-analyze", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({
+          filename: formData.name ? `${formData.name}.bat` : "custom-script.bat",
+          content: formData.scriptContent,
+          userApiKey: geminiApiKey,
+        }),
+      });
+
+      const analyzeData = await analyzeRes.json();
+      if (analyzeData.success && analyzeData.data) {
+        const d = analyzeData.data;
+        setFormData((prev) => ({
+          ...prev,
+          name: prev.name || d.name,
+          category: d.category || prev.category,
+          tagline: d.tagline || prev.tagline,
+          description: d.description || prev.description,
+          compatibility: d.compatibility || prev.compatibility,
+          revertScript: d.revertScript || prev.revertScript,
+        }));
+
+        const engineLabel = analyzeData.isGemini
+          ? `Google Gemini AI (${analyzeData.model || "Flash"})`
+          : "ระบบ AI Parser";
+        setMessage(`[AI Auto-Pilot] ${engineLabel} อัปเดตข้อมูลและสคริปต์ Revert จากโค้ดปัจจุบันเรียบร้อยแล้ว!`);
+        setTimeout(() => setMessage(""), 5000);
+      }
+    } catch (err) {
+      alert("ไม่สามารถวิเคราะห์ด้วย AI ได้");
+    } finally {
+      setIsAnalyzing(false);
+      setAiStatusMessage("");
     }
   };
 
@@ -266,22 +406,43 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* Gemini AI Settings Button */}
+            <button
+              onClick={() => {
+                setTempApiKey(geminiApiKey);
+                setIsApiKeyModalOpen(true);
+              }}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${
+                geminiApiKey
+                  ? "bg-green-500/15 text-green-300 border-green-500/40 hover:bg-green-500/25 hover:border-green-500/60 shadow-sm shadow-green-500/15"
+                  : "bg-cyan-500/10 text-cyan-300 border-cyan-500/30 hover:bg-cyan-500/20 hover:border-cyan-500/50"
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-green-400" />
+              <span>ตั้งค่า Gemini AI</span>
+              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full font-bold ${
+                geminiApiKey ? "bg-green-400/20 text-green-300" : "bg-cyan-400/20 text-cyan-300"
+              }`}>
+                {geminiApiKey ? "เปิดใช้งานแล้ว" : "ฟรี Key"}
+              </span>
+            </button>
+
             <a
               href="/"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
             >
               <ExternalLink className="w-4 h-4" />
-              <span>ดูหน้าร้านจริง</span>
+              <span className="hidden md:inline">ดูหน้าร้านจริง</span>
             </a>
             <button
               onClick={handleLogout}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition-colors cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
-              <span>ออกจากระบบ</span>
+              <span className="hidden sm:inline">ออกจากระบบ</span>
             </button>
           </div>
         </div>
@@ -479,8 +640,32 @@ export default function AdminDashboardPage() {
             {/* Modal Body */}
             <form onSubmit={handleSaveProduct} className="p-8 space-y-6 max-h-[80vh] overflow-y-auto">
               
-              {/* Direct File Upload Area */}
-              <div className="p-5 rounded-2xl bg-white/[0.03] border-2 border-dashed border-white/15 text-center space-y-3">
+              {/* Drag & Drop Upload Zone with Gemini AI Auto-Pilot */}
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) {
+                    processFileWithAI(file);
+                  }
+                }}
+                className={`relative p-6 sm:p-7 rounded-3xl border-2 border-dashed transition-all duration-300 text-center space-y-3 ${
+                  isDragging
+                    ? "border-green-400 bg-green-500/15 scale-[1.01] shadow-[0_0_35px_rgba(74,222,128,0.3)]"
+                    : isAnalyzing
+                    ? "border-cyan-400/80 bg-cyan-500/10 shadow-[0_0_25px_rgba(6,182,212,0.2)]"
+                    : "border-white/20 hover:border-green-400/50 bg-white/[0.03] hover:bg-white/[0.05]"
+                }`}
+              >
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -488,25 +673,56 @@ export default function AdminDashboardPage() {
                   accept=".bat,.cmd,.reg,.ps1,.zip,.txt"
                   className="hidden"
                 />
-                <div className="w-12 h-12 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto text-green-400">
-                  <Upload className="w-6 h-6" />
+
+                {/* AI Badge */}
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/15 border border-green-500/30 text-xs font-mono text-green-300">
+                  <Sparkles className="w-3.5 h-3.5 text-green-400" />
+                  <span>AI Auto-Pilot: {geminiApiKey ? "Google Gemini AI" : "Built-in Parser"}</span>
                 </div>
+
+                <div className="w-14 h-14 rounded-2xl bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto text-green-400">
+                  {isAnalyzing || uploading ? (
+                    <Loader2 className="w-7 h-7 animate-spin text-green-400" />
+                  ) : (
+                    <Upload className="w-7 h-7" />
+                  )}
+                </div>
+
                 <div>
-                  <h4 className="text-sm font-bold text-white">
-                    อัปโหลดไฟล์สคริปต์จากเครื่อง (.bat, .cmd, .reg, .ps1, .zip)
+                  <h4 className="text-base font-bold text-white">
+                    {isDragging
+                      ? "ปล่อยไฟล์ที่นี่เพื่อให้ AI วิเคราะห์และกรอกข้อมูลทันที"
+                      : isAnalyzing
+                      ? aiStatusMessage || "AI กำลังวิเคราะห์โค้ดสคริปต์..."
+                      : "ลากไฟล์สคริปต์มาวางที่นี่ (.bat, .cmd, .reg, .ps1, .zip)"}
                   </h4>
-                  <p className="text-xs text-slate-400 mt-1">
-                    ระบบจะตรวจจับชื่อไฟล์ ขนาดไฟล์ และดึงโค้ดเข้าสู่ Text Editor อัตโนมัติ
+                  <p className="text-xs text-slate-400 mt-1 max-w-lg mx-auto">
+                    {isAnalyzing
+                      ? "ระบบกำลังสร้างชื่อ, คำโปรย, คำอธิบาย, หมวดหมู่ และ Revert Script ให้อัตโนมัติ"
+                      : "แค่ลากไฟล์ลงไป ระบบ AI จะอ่านโค้ดและเติมข้อมูลลงฟอร์มทุกช่องให้อัตโนมัติใน 1 วินาที"}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  disabled={uploading}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-mono font-semibold transition-colors cursor-pointer"
-                >
-                  {uploading ? "กำลังอ่านไฟล์..." : "เลือกไฟล์จากคอมพิวเตอร์"}
-                </button>
+
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+                  <button
+                    type="button"
+                    disabled={uploading || isAnalyzing}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-mono font-semibold transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {uploading || isAnalyzing ? "กำลังประมวลผล..." : "เลือกไฟล์จากคอมพิวเตอร์"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTempApiKey(geminiApiKey);
+                      setIsApiKeyModalOpen(true);
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-semibold transition-colors cursor-pointer"
+                  >
+                    ตั้งค่า Gemini Key
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -601,10 +817,30 @@ export default function AdminDashboardPage() {
 
               {/* Code Editor for Main Script */}
               <div>
-                <label className="block text-xs font-mono text-slate-300 font-semibold mb-2 flex items-center justify-between">
-                  <span>Source Code สคริปต์หลัก (.BAT / CMD Code) *</span>
-                  <span className="text-[11px] text-green-400">ไฟล์นี้จะถูกส่งให้ผู้ใช้ดาวน์โหลด</span>
-                </label>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <label className="text-xs font-mono text-slate-300 font-semibold flex items-center gap-2">
+                    <span>Source Code สคริปต์หลัก (.BAT / CMD Code) *</span>
+                    <span className="text-[11px] text-green-400">ไฟล์นี้จะถูกส่งให้ผู้ใช้ดาวน์โหลด</span>
+                  </label>
+                  <button
+                    type="button"
+                    disabled={isAnalyzing || !formData.scriptContent}
+                    onClick={handleTriggerAiAnalysis}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-green-500/15 hover:bg-green-500/25 border border-green-500/35 text-xs font-mono text-green-300 transition-colors disabled:opacity-40 cursor-pointer"
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>กำลังวิเคราะห์...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 text-green-400" />
+                        <span>วิเคราะห์ด้วย Gemini AI ซ้ำ</span>
+                      </>
+                    )}
+                  </button>
+                </div>
                 <textarea
                   rows={8}
                   required
@@ -672,6 +908,100 @@ export default function AdminDashboardPage() {
 
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* GEMINI API KEY MODAL */}
+      {isApiKeyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md font-sans">
+          <div className="relative w-full max-w-lg rounded-3xl bg-[#0e1017] border-2 border-white/15 shadow-2xl p-6 sm:p-7 space-y-5">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-2.5 text-base font-bold text-white">
+                <Sparkles className="w-5 h-5 text-green-400" />
+                <span>ตั้งค่า Google Gemini AI Key</span>
+              </div>
+              <button
+                onClick={() => setIsApiKeyModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+              <p>
+                ใส่ <strong className="text-white">Gemini API Key</strong> เพื่อให้ระบบใช้โมเดล <strong className="text-green-400">Gemini 2.0 Flash</strong> ในการอ่านโค้ดสคริปต์อัตโนมัติ, เขียนคำอธิบายเชิงลึก, สรุปจุดเด่น และสร้าง Revert Script คืนค่าเดิมให้ทันทีเมื่อลากไฟล์ลงในกล่อง
+              </p>
+
+              <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/25 text-xs text-cyan-300 space-y-1.5 font-sans">
+                <div className="font-bold text-white flex items-center gap-1.5">
+                  <Key className="w-4 h-4 text-cyan-400" />
+                  <span>วิธีขอรับ Free Gemini API Key (ฟรี 100%):</span>
+                </div>
+                <p>1. เข้าเว็บไซต์ Google AI Studio</p>
+                <p>2. ล็อกอินด้วยบัญชี Google แล้วคลิก "Create API key"</p>
+                <p>3. คัดลอกคีย์มาวางในช่องด้านล่าง แล้วกด "บันทึกคีย์"</p>
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-green-400 hover:underline font-mono font-semibold pt-1"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>เปิดหน้า Google AI Studio เพื่อขอคีย์ฟรี</span>
+                </a>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-slate-300 font-semibold mb-2">
+                  Gemini API Key
+                </label>
+                <input
+                  type="password"
+                  value={tempApiKey}
+                  onChange={(e) => setTempApiKey(e.target.value)}
+                  placeholder="AIzaSy..."
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/15 text-white font-mono text-xs sm:text-sm focus:outline-none focus:border-green-400 transition-colors"
+                />
+                <span className="text-[11px] text-slate-400 mt-1.5 block">
+                  คีย์จะถูกบันทึกอย่างปลอดภัยในเบราว์เซอร์ของคุณ (Local Storage)
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+              {geminiApiKey && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTempApiKey("");
+                    localStorage.removeItem("pokky_gemini_api_key");
+                    setGeminiApiKey("");
+                    setIsApiKeyModalOpen(false);
+                    setMessage("ลบคีย์ Gemini เรียบร้อยแล้ว (ระบบจะใช้ Built-in Code Parser แทน)");
+                    setTimeout(() => setMessage(""), 4000);
+                  }}
+                  className="py-2.5 px-4 rounded-xl text-xs font-mono text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors cursor-pointer mr-auto"
+                >
+                  ลบคีย์ออก
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsApiKeyModalOpen(false)}
+                className="py-2.5 px-5 rounded-xl text-xs sm:text-sm font-mono text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveApiKey}
+                className="py-2.5 px-6 rounded-xl text-xs sm:text-sm font-mono font-bold text-slate-950 bg-green-400 hover:bg-green-300 transition-all shadow-md shadow-green-500/20 cursor-pointer"
+              >
+                บันทึกคีย์
+              </button>
+            </div>
           </div>
         </div>
       )}
