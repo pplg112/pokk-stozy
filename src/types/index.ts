@@ -32,6 +32,7 @@ export interface DigitalProduct {
   description: string;
   hasRevertScript: boolean;
   downloadUrl?: string;
+  imageUrl?: string;
   active?: boolean;
   scriptContent?: string;
   revertScript?: string;

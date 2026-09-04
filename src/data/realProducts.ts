@@ -24,6 +24,7 @@ export interface RealProduct {
   includedFiles: { filename: string; description: string }[];
   scriptContent: string;
   revertScript: string;
+  imageUrl?: string;
   createdAt: string;
   updatedAt: string;
 }

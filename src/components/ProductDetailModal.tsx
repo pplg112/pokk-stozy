@@ -220,6 +220,23 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           {/* Modal Scrollable Content */}
           <div className="p-5 sm:p-6 space-y-5 overflow-y-auto">
             
+            {/* Cover Image Banner in Modal */}
+            {product.imageUrl && (
+              <div className="relative w-full h-44 sm:h-56 rounded-2xl overflow-hidden border border-white/10 bg-black/60 shadow-lg">
+                <img
+                  src={product.imageUrl}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0e1017] via-transparent to-transparent" />
+                <div className="absolute top-3 right-3">
+                  <span className="px-3 py-1 rounded-lg bg-green-500/25 backdrop-blur-md border border-green-500/40 text-green-300 font-mono text-xs font-bold">
+                    แจกฟรี 100%
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Title & Tagline */}
             <div>
               <h2 className="text-lg sm:text-xl font-extrabold text-white mb-1 leading-tight">

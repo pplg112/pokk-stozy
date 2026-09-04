@@ -27,6 +27,14 @@ import {
   Cpu
 } from "lucide-react";
 
+const CATEGORY_COVER_PRESETS: Record<string, string> = {
+  "bundles": "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?auto=format&fit=crop&w=800&q=80",
+  "os-scripts": "https://images.unsplash.com/photo-1591488320449-011701bb6704?auto=format&fit=crop&w=800&q=80",
+  "gpu-profiles": "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?auto=format&fit=crop&w=800&q=80",
+  "network": "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80",
+  "memory-bios": "https://images.unsplash.com/photo-1562976540-1502c2145186?auto=format&fit=crop&w=800&q=80",
+};
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [products, setProducts] = useState<RealProduct[]>([]);
@@ -53,6 +61,7 @@ export default function AdminDashboardPage() {
   const [editingProduct, setEditingProduct] = useState<RealProduct | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -66,6 +75,7 @@ export default function AdminDashboardPage() {
     compatibility: "Windows 10 / 11 (64-bit)",
     popular: false,
     active: true,
+    imageUrl: "",
     scriptContent: `@echo off\ntitle Optimization Script\necho [POKKY OPTIMIZE] กำลังเริ่มการปรับแต่ง...\npause`,
     revertScript: `@echo off\ntitle Revert Script\necho [POKKY OPTIMIZE] คืนค่าเดิมของระบบ...\npause`,
   });
@@ -144,6 +154,7 @@ export default function AdminDashboardPage() {
       compatibility: "Windows 10 / 11 (64-bit)",
       popular: false,
       active: true,
+      imageUrl: CATEGORY_COVER_PRESETS["bundles"],
       scriptContent: `@echo off\ntitle My Optimization Script\necho [POKKY OPTIMIZE] กำลังเริ่มการปรับแต่ง...\npause`,
       revertScript: `@echo off\ntitle Revert Script\necho [POKKY OPTIMIZE] คืนค่าเดิมของระบบ...\npause`,
     });
@@ -163,10 +174,28 @@ export default function AdminDashboardPage() {
       compatibility: product.compatibility,
       popular: product.popular,
       active: product.active,
+      imageUrl: product.imageUrl || CATEGORY_COVER_PRESETS[product.category] || "",
       scriptContent: product.scriptContent,
       revertScript: product.revertScript,
     });
     setIsModalOpen(true);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("กรุณาเลือกไฟล์รูปภาพเท่านั้น (.png, .jpg, .webp)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setFormData((prev) => ({ ...prev, imageUrl: dataUrl }));
+      setMessage("อัปโหลดรูปภาพปกตัวอย่างเรียบร้อยแล้ว");
+      setTimeout(() => setMessage(""), 3000);
+    };
+    reader.readAsDataURL(file);
   };
 
   // Process File with Gemini AI Auto-Pilot
@@ -232,6 +261,7 @@ export default function AdminDashboardPage() {
           fileSize: fileSize,
           scriptContent: scriptContent,
           revertScript: d.revertScript || prev.revertScript,
+          imageUrl: prev.imageUrl || CATEGORY_COVER_PRESETS[d.category] || CATEGORY_COVER_PRESETS["bundles"],
         }));
 
         const engineLabel = analyzeData.isGemini
@@ -722,6 +752,96 @@ export default function AdminDashboardPage() {
                   >
                     ตั้งค่า Gemini Key
                   </button>
+                </div>
+              </div>
+
+              {/* Cover Image Section */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-mono text-slate-300 font-semibold flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>รูปภาพปกสคริปต์ (Cover Image / Thumbnail)</span>
+                  </label>
+                  {formData.imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, imageUrl: "" })}
+                      className="text-xs text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                    >
+                      ลบรูปภาพ
+                    </button>
+                  )}
+                </div>
+
+                {formData.imageUrl ? (
+                  <div className="relative w-full h-36 sm:h-44 rounded-xl overflow-hidden border border-white/10 bg-black/40 group/cover">
+                    <img
+                      src={formData.imageUrl}
+                      alt="Cover Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/cover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => imageFileInputRef.current?.click()}
+                        className="px-3.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-medium cursor-pointer"
+                      >
+                        เปลี่ยนรูป
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div 
+                    onClick={() => imageFileInputRef.current?.click()}
+                    className="w-full h-24 rounded-xl border border-dashed border-white/20 hover:border-green-400/50 flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors bg-white/[0.02] hover:bg-white/[0.04]"
+                  >
+                    <Upload className="w-5 h-5 text-slate-400" />
+                    <span className="text-xs text-slate-300">คลิกเพื่ออัปโหลดรูปภาพปกจากเครื่อง หรือเลือกภาพตัวอย่างด้านล่าง</span>
+                  </div>
+                )}
+
+                <input
+                  type="file"
+                  ref={imageFileInputRef}
+                  onChange={handleImageUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <input
+                    type="text"
+                    value={formData.imageUrl}
+                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                    placeholder="หรือวาง URL รูปภาพ เช่น https://..."
+                    className="flex-1 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-green-400 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => imageFileInputRef.current?.click()}
+                    className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-mono shrink-0 transition-colors cursor-pointer"
+                  >
+                    เลือกรูปจากเครื่อง
+                  </button>
+                </div>
+
+                {/* Cover Presets */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[11px] text-slate-400 font-mono">ภาพตัวอย่าง Esports:</span>
+                  {Object.entries(CATEGORY_COVER_PRESETS).map(([catKey, url]) => (
+                    <button
+                      key={catKey}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, imageUrl: url })}
+                      className={`px-2.5 py-1 rounded-lg border text-[11px] font-mono transition-colors cursor-pointer ${
+                        formData.imageUrl === url
+                          ? "bg-green-500/20 text-green-300 border-green-500/40"
+                          : "bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white"
+                      }`}
+                    >
+                      {catKey}
+                    </button>
+                  ))}
                 </div>
               </div>
 

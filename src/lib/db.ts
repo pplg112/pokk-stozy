@@ -160,6 +160,7 @@ export const db = {
       name: data.name,
       tagline: data.tagline || "สคริปต์ปรับแต่งประสิทธิภาพเกมเมอร์ระดับ Esports",
       description: data.description || "สคริปต์ปรับแต่งคอมพิวเตอร์เพื่อความเสถียรและเฟรมเรตสูงสุด",
+      imageUrl: data.imageUrl,
       category: data.category,
       fileFormat: data.fileFormat || ".BAT",
       fileSize: data.fileSize || "50 KB",
