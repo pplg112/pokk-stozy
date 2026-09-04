@@ -1,10 +1,7 @@
 "use client";
 
 import React from "react";
-import { 
-  Search, 
-  MessageSquare 
-} from "lucide-react";
+import { Search } from "lucide-react";
 
 interface NavbarProps {
   onSearchChange: (query: string) => void;
@@ -58,12 +55,12 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Right Actions */}
         <div className="flex items-center gap-3 shrink-0">
           <a
-            href="https://discord.gg"
+            href="https://discord.gg/eHa8MQu7mz"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-semibold text-white bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 hover:border-indigo-500/50 transition-all shadow-sm"
+            className="inline-flex items-center gap-2.5 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-semibold text-white bg-[#5865F2]/20 hover:bg-[#5865F2]/30 border border-[#5865F2]/40 hover:border-[#5865F2]/60 transition-all shadow-sm group"
           >
-            <MessageSquare className="w-5 h-5 text-indigo-400" />
+            <img src="/discord-logo.png" alt="Discord" className="w-5 h-5 object-contain group-hover:scale-110 transition-transform" />
             <span>Discord ชุมชน</span>
           </a>
         </div>

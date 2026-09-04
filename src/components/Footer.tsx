@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { MessageSquare } from "lucide-react";
+
 
 export const Footer: React.FC = () => {
   return (
@@ -28,12 +28,12 @@ export const Footer: React.FC = () => {
         {/* Links */}
         <div className="flex flex-wrap items-center gap-4 text-sm">
           <a 
-            href="https://discord.gg" 
+            href="https://discord.gg/eHa8MQu7mz" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-slate-200 hover:text-white flex items-center gap-2 transition-colors px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 font-medium"
+            className="text-slate-200 hover:text-white flex items-center gap-2.5 transition-colors px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 font-medium group"
           >
-            <MessageSquare className="w-4 h-4 text-indigo-400" />
+            <img src="/discord-logo.png" alt="Discord" className="w-4 h-4 object-contain group-hover:scale-110 transition-transform" />
             Discord Community
           </a>
           <a

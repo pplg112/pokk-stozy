@@ -20,6 +20,9 @@ export const metadata: Metadata = {
     shortcut: "/logo.png",
     apple: "/logo.png",
   },
+  other: {
+    "google-adsense-account": "ca-pub-1057391684109886",
+  },
 };
 
 export const viewport: Viewport = {
@@ -37,12 +40,10 @@ export default function RootLayout({
     <html lang="th" className={`dark scroll-smooth ${promptFont.variable}`}>
       <head>
         {ADS_CONFIG.adsense.enabled && ADS_CONFIG.adsense.clientId && (
-          <Script
-            id="adsbygoogle-init"
+          <script
             async
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADS_CONFIG.adsense.clientId}`}
             crossOrigin="anonymous"
-            strategy="afterInteractive"
           />
         )}
       </head>
