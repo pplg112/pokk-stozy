@@ -348,6 +348,8 @@ export default function AdminDashboardPage() {
             else if (lower.endsWith(".cmd") || lower.endsWith(".bat")) desc = "ไฟล์สคริปต์คำสั่งการทำงานหลัก";
             else if (lower.endsWith(".ps1")) desc = "สคริปต์ PowerShell";
             else if (lower.endsWith(".txt")) desc = "คู่มือหรือข้อความอธิบาย";
+            else if (lower.endsWith(".exe")) desc = "โปรแกรมเครื่องมือปรับแต่ง (Executable Tool)";
+            else if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg")) desc = "ภาพคู่มือขั้นตอนการตั้งค่า";
             return {
               filename: e.name,
               description: desc,
