@@ -10,6 +10,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 const ITEMS_PER_PAGE = 9;
 
 interface ProductCatalogProps {
+  products?: DigitalProduct[];
   onBuyNow: (product: DigitalProduct) => void;
   onViewDetails: (product: DigitalProduct) => void;
   searchQuery: string;
@@ -17,12 +18,14 @@ interface ProductCatalogProps {
 }
 
 export const ProductCatalog: React.FC<ProductCatalogProps> = ({
+  products,
   onBuyNow,
   onViewDetails,
   searchQuery,
   onSearchChange,
 }) => {
-  const [productsList, setProductsList] = useState<DigitalProduct[]>(DIGITAL_PRODUCTS);
+  const [internalList, setInternalList] = useState<DigitalProduct[]>(DIGITAL_PRODUCTS);
+  const productsList = products || internalList;
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory>("all");
   const [sortBy, setSortBy] = useState<"popular" | "rating" | "name">("popular");
   const [currentPage, setCurrentPage] = useState(1);
@@ -33,7 +36,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
       .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.products) && data.products.length > 0) {
-          setProductsList(data.products);
+          setInternalList(data.products);
         }
       })
       .catch(() => {

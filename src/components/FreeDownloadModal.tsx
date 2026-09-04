@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { DigitalProduct, DownloadRecord } from "@/types";
-import { triggerFreeDownload } from "@/utils/storage";
+import { recordFreeDownload } from "@/utils/storage";
 import { ADS_CONFIG } from "@/config/ads";
 import { AdBanner } from "./AdBanner";
 import { 
@@ -45,7 +45,7 @@ export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
     document.body.removeChild(link);
 
     // 2. Log local download record
-    const record = triggerFreeDownload(prod);
+    const record = recordFreeDownload(prod);
     setDownloadId(record.downloadId);
     onDownloadComplete(record);
     setStep("completed");

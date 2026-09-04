@@ -1,12 +1,15 @@
 import fs from "fs";
 import path from "path";
 import { RealProduct, INITIAL_REAL_PRODUCTS } from "@/data/realProducts";
+import { Review } from "@/types";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const DB_FILE = path.join(DATA_DIR, "products.json");
+const REVIEWS_FILE = path.join(DATA_DIR, "reviews.json");
 
 // In-memory memory cache for fast lookups & Vercel serverless persistence during instance lifetime
 let memoryCache: RealProduct[] | null = null;
+let reviewsCache: Review[] | null = null;
 const fileStorage: Record<string, { filename: string; content: string }> = {};
 
 function ensureDbFile(): RealProduct[] {
@@ -58,18 +61,95 @@ function persistDb(products: RealProduct[]) {
   }
 }
 
+function ensureReviewsFile(): Review[] {
+  if (reviewsCache !== null) {
+    return reviewsCache;
+  }
+
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      try {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      } catch {
+        // Read-only filesystem on serverless
+      }
+    }
+
+    if (fs.existsSync(REVIEWS_FILE)) {
+      const raw = fs.readFileSync(REVIEWS_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        reviewsCache = parsed;
+        return reviewsCache;
+      }
+    }
+
+    reviewsCache = [];
+    try {
+      fs.writeFileSync(REVIEWS_FILE, JSON.stringify(reviewsCache, null, 2), "utf-8");
+    } catch {
+      // Ignore if read-only
+    }
+    return reviewsCache;
+  } catch {
+    reviewsCache = [];
+    return reviewsCache;
+  }
+}
+
+function persistReviews(reviews: Review[]) {
+  reviewsCache = reviews;
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(REVIEWS_FILE, JSON.stringify(reviews, null, 2), "utf-8");
+  } catch {
+    // In serverless instances where FS is read-only, reviewsCache retains state
+  }
+}
+
+function calculateProductRating(productId: string, reviews: Review[]) {
+  const prodReviews = reviews.filter((r) => r.productId === productId);
+  const reviewCount = prodReviews.length;
+  const rating = reviewCount > 0
+    ? Number((prodReviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount).toFixed(1))
+    : 0;
+  return { rating, reviewCount };
+}
+
 export const db = {
   getProducts(activeOnly = true): RealProduct[] {
     const products = ensureDbFile();
+    const reviews = ensureReviewsFile();
+
+    const enriched = products.map((prod) => {
+      const { rating, reviewCount } = calculateProductRating(prod.id, reviews);
+      return {
+        ...prod,
+        rating,
+        reviewCount,
+      };
+    });
+
     if (activeOnly) {
-      return products.filter((p) => p.active);
+      return enriched.filter((p) => p.active);
     }
-    return [...products];
+    return [...enriched];
   },
 
   getProductById(id: string): RealProduct | undefined {
     const products = ensureDbFile();
-    return products.find((p) => p.id === id);
+    const prod = products.find((p) => p.id === id);
+    if (!prod) return undefined;
+
+    const reviews = ensureReviewsFile();
+    const { rating, reviewCount } = calculateProductRating(prod.id, reviews);
+    return {
+      ...prod,
+      rating,
+      reviewCount,
+    };
   },
 
   createProduct(data: Partial<RealProduct> & { name: string; category: RealProduct["category"] }): RealProduct {
@@ -86,8 +166,8 @@ export const db = {
       version: data.version || "v1.0.0",
       compatibility: data.compatibility || "Windows 10 / 11 (64-bit)",
       downloadsCount: data.downloadsCount || 0,
-      rating: data.rating || 5.0,
-      reviewCount: data.reviewCount || 1,
+      rating: 0,
+      reviewCount: 0,
       popular: data.popular ?? false,
       active: data.active ?? true,
       features: data.features || ["ปรับแต่งระบบอัตโนมัติ", "ปลอดภัย มีไฟล์ Revert ในตัว"],
@@ -156,6 +236,55 @@ export const db = {
       activeProducts,
       popularCount,
     };
+  },
+
+  // --- Real User Reviews & Ratings (No Login Required) ---
+  getReviews(productId?: string): Review[] {
+    const reviews = ensureReviewsFile();
+    let result = [...reviews];
+    if (productId) {
+      result = result.filter((r) => r.productId === productId);
+    }
+    return result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+
+  createReview(data: {
+    productId: string;
+    authorName: string;
+    rating: number;
+    comment: string;
+    imageUrl?: string;
+  }): Review {
+    const reviews = ensureReviewsFile();
+    const newReview: Review = {
+      id: `rev-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      productId: data.productId,
+      authorName: data.authorName.trim() || "ผู้ใช้นิรนาม",
+      rating: Math.max(1, Math.min(5, Math.round(data.rating))),
+      comment: data.comment.trim(),
+      imageUrl: data.imageUrl || undefined,
+      createdAt: new Date().toISOString(),
+    };
+
+    reviews.unshift(newReview);
+    persistReviews(reviews);
+
+    // Update product rating and review count in products table
+    const products = ensureDbFile();
+    const prod = products.find((p) => p.id === data.productId);
+    if (prod) {
+      const { rating, reviewCount } = calculateProductRating(prod.id, reviews);
+      prod.rating = rating;
+      prod.reviewCount = reviewCount;
+      persistDb(products);
+    }
+
+    return newReview;
+  },
+
+  getProductRating(productId: string): { rating: number; reviewCount: number } {
+    const reviews = ensureReviewsFile();
+    return calculateProductRating(productId, reviews);
   },
 
   saveUploadedBlob(fileId: string, filename: string, content: string) {

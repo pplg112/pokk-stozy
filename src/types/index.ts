@@ -37,6 +37,16 @@ export interface DigitalProduct {
   revertScript?: string;
 }
 
+export interface Review {
+  id: string;
+  productId: string;
+  authorName: string;
+  rating: number; // 1 to 5
+  comment: string;
+  imageUrl?: string;
+  createdAt: string;
+}
+
 export interface DownloadRecord {
   downloadId: string;
   productId: string;

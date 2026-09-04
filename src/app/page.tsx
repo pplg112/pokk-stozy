@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { StoreHero } from "@/components/StoreHero";
 import { ProductCatalog } from "@/components/ProductCatalog";
@@ -12,9 +12,25 @@ import { DIGITAL_PRODUCTS } from "@/data/products";
 import { DigitalProduct, DownloadRecord } from "@/types";
 
 export default function HomePage() {
+  const [productsList, setProductsList] = useState<DigitalProduct[]>(DIGITAL_PRODUCTS);
   const [selectedProduct, setSelectedProduct] = useState<DigitalProduct | null>(null);
   const [downloadingProduct, setDownloadingProduct] = useState<DigitalProduct | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const refreshProducts = () => {
+    fetch("/api/products", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.products) && data.products.length > 0) {
+          setProductsList(data.products);
+        }
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    refreshProducts();
+  }, []);
 
   const handleStartDownload = (product: DigitalProduct) => {
     setDownloadingProduct(product);
@@ -25,7 +41,31 @@ export default function HomePage() {
   };
 
   const handleDownloadComplete = (record: DownloadRecord) => {
-    // Handled smoothly
+    // Increment local download count immediately
+    setProductsList((prev) =>
+      prev.map((p) =>
+        p.id === record.productId
+          ? { ...p, downloadsCount: (p.downloadsCount || 0) + 1 }
+          : p
+      )
+    );
+  };
+
+  const handleReviewAdded = (productId: string, newRating: number, newReviewCount: number) => {
+    setProductsList((prev) =>
+      prev.map((p) =>
+        p.id === productId
+          ? { ...p, rating: newRating, reviewCount: newReviewCount }
+          : p
+      )
+    );
+    if (selectedProduct && selectedProduct.id === productId) {
+      setSelectedProduct((prev) =>
+        prev
+          ? { ...prev, rating: newRating, reviewCount: newReviewCount }
+          : null
+      );
+    }
   };
 
   return (
@@ -44,6 +84,7 @@ export default function HomePage() {
         
         {/* Products Grid */}
         <ProductCatalog
+          products={productsList}
           onBuyNow={handleStartDownload}
           onViewDetails={setSelectedProduct}
           searchQuery={searchQuery}
@@ -62,6 +103,7 @@ export default function HomePage() {
         product={selectedProduct}
         onClose={() => setSelectedProduct(null)}
         onBuyNow={handleStartDownload}
+        onReviewAdded={handleReviewAdded}
       />
 
       {/* 100% Free Download Modal */}

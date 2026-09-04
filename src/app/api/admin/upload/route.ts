@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-
-const COOKIE_NAME = "pokky_admin_token";
-const SECRET_TOKEN = "pokky_authenticated_admin_session_2026";
+import { ADMIN_COOKIE_NAME, ADMIN_SECRET_TOKEN } from "@/lib/auth";
 
 function isAuthenticated(request: NextRequest): boolean {
-  const token = request.cookies.get(COOKIE_NAME)?.value;
-  return token === SECRET_TOKEN;
+  const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+  return token === ADMIN_SECRET_TOKEN;
 }
 
 export async function POST(request: NextRequest) {

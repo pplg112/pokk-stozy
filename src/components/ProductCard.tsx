@@ -68,13 +68,22 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <span className="text-xs sm:text-sm font-bold font-mono px-2.5 py-0.5 rounded-lg bg-green-500/20 text-green-400 border border-green-500/40">
               แจกฟรี 100%
             </span>
-            <span className="text-xs font-mono text-slate-400">
-              {product.downloadsCount.toLocaleString()} โหลดแล้ว
-            </span>
+            {product.downloadsCount > 0 && (
+              <span className="text-xs font-mono text-slate-400">
+                {product.downloadsCount.toLocaleString()} โหลดแล้ว
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-1 text-xs font-mono font-bold text-amber-400">
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            <span>{product.rating.toFixed(1)}</span>
+          <div className="flex items-center gap-1 text-xs font-mono font-bold">
+            {product.reviewCount > 0 ? (
+              <div className="flex items-center gap-1 text-amber-400">
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <span>{product.rating.toFixed(1)}</span>
+                <span className="text-[11px] text-slate-400 font-normal">({product.reviewCount})</span>
+              </div>
+            ) : (
+              <span className="text-xs text-slate-400 font-sans font-normal">ยังไม่มีรีวิว</span>
+            )}
           </div>
         </div>
 

@@ -60,10 +60,7 @@ export function clearStoredDownloads(): void {
   }
 }
 
-/**
- * Trigger authentic, clean PC optimization package download in the browser
- */
-export function triggerFreeDownload(product: DigitalProduct, downloadId?: string): DownloadRecord {
+export function recordFreeDownload(product: DigitalProduct, downloadId?: string): DownloadRecord {
   const dlId = downloadId || `DL-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
   const nowStr = new Date().toLocaleDateString("th-TH", {
     year: "numeric",
@@ -85,6 +82,16 @@ export function triggerFreeDownload(product: DigitalProduct, downloadId?: string
   };
 
   saveStoredDownload(record);
+  return record;
+}
+
+/**
+ * Trigger authentic, clean PC optimization package download in the browser
+ */
+export function triggerFreeDownload(product: DigitalProduct, downloadId?: string): DownloadRecord {
+  const record = recordFreeDownload(product, downloadId);
+  const dlId = record.downloadId;
+  const nowStr = record.downloadDate;
 
   // Generate clean, safe .bat / .cmd / config script contents
   const scriptContent = `@echo off
@@ -206,7 +213,7 @@ To revert back to Windows standard defaults, run the included Revert script
 or restore your System Restore Point from Control Panel > Recovery.
 
 Need assistance or want to share benchmark results?
-Join our Discord: https://discord.gg/pokky-opt
+Join our Discord: https://discord.gg/eHa8MQu7mz
 ========================================================================`;
 
   const blob = new Blob([content], { type: "text/plain;charset=utf-8" });

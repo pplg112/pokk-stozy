@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "pgm2551dd";
-const COOKIE_NAME = "pokky_admin_token";
-const SECRET_TOKEN = "pokky_admin_session_pgm2551dd";
+import { ADMIN_COOKIE_NAME, ADMIN_SECRET_TOKEN, ADMIN_PASSWORD } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,8 +10,8 @@ export async function POST(request: NextRequest) {
       const response = NextResponse.json({ success: true, message: "เข้าสู่ระบบสำเร็จ" });
       
       response.cookies.set({
-        name: COOKIE_NAME,
-        value: SECRET_TOKEN,
+        name: ADMIN_COOKIE_NAME,
+        value: ADMIN_SECRET_TOKEN,
         httpOnly: true,
         path: "/",
         maxAge: 60 * 60 * 24 * 7, // 7 days
@@ -37,8 +34,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const token = request.cookies.get(COOKIE_NAME)?.value;
-  if (token === SECRET_TOKEN) {
+  const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+  if (token === ADMIN_SECRET_TOKEN) {
     return NextResponse.json({ authenticated: true });
   }
   return NextResponse.json({ authenticated: false }, { status: 401 });
@@ -46,6 +43,6 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE() {
   const response = NextResponse.json({ success: true, message: "ออกจากระบบแล้ว" });
-  response.cookies.delete(COOKIE_NAME);
+  response.cookies.delete(ADMIN_COOKIE_NAME);
   return response;
 }
