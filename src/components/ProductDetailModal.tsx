@@ -29,41 +29,41 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   if (!product) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto font-sans">
-      <div className="relative w-full max-w-4xl rounded-3xl bg-[#0e1017] border-2 border-white/15 shadow-2xl my-8 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto font-sans">
+      <div className="relative w-full max-w-2xl sm:max-w-3xl rounded-2xl bg-[#0e1017] border border-white/15 shadow-2xl my-4 overflow-hidden max-h-[92vh] flex flex-col">
         
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-7 sm:px-8 py-5 border-b border-white/10 bg-white/[0.03]">
-          <div className="flex items-center gap-2.5 text-sm sm:text-base font-mono text-cyan-400 font-bold">
-            <FileCode2 className="w-5 h-5" />
+        <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 border-b border-white/10 bg-white/[0.03] shrink-0">
+          <div className="flex items-center gap-2 text-xs sm:text-sm font-mono text-cyan-400 font-bold">
+            <FileCode2 className="w-4 h-4" />
             <span className="text-white uppercase">{product.fileFormat} • {product.version}</span>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Modal Scrollable Content */}
-        <div className="p-7 sm:p-10 space-y-7 max-h-[80vh] overflow-y-auto">
+        <div className="p-5 sm:p-6 space-y-4 overflow-y-auto">
           
           {/* Title & Tagline */}
           <div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-2 leading-tight">
+            <h2 className="text-lg sm:text-xl font-extrabold text-white mb-1 leading-tight">
               {product.name}
             </h2>
-            <p className="text-base text-slate-300">
+            <p className="text-xs sm:text-sm text-slate-300">
               {product.tagline}
             </p>
           </div>
 
           {/* Meta Specs Pill Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 rounded-2xl bg-white/[0.04] border border-white/10 font-mono text-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 rounded-xl bg-white/[0.04] border border-white/10 font-mono text-xs">
             <div>
-              <span className="text-slate-400 block text-xs mb-1">ขนาดไฟล์:</span>
-              <span className="text-white font-bold text-base">{product.fileSize}</span>
+              <span className="text-slate-400 block text-[11px] mb-0.5">ขนาดไฟล์:</span>
+              <span className="text-white font-bold text-sm">{product.fileSize}</span>
             </div>
             <div>
               <span className="text-slate-400 block text-xs mb-1">เรตติ้งผู้ใช้:</span>

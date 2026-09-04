@@ -64,22 +64,22 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   }, [selectedCategory, searchQuery, sortBy]);
 
   return (
-    <section id="products" className="py-12 sm:py-16 max-w-7xl mx-auto px-6 sm:px-8">
+    <section id="products" className="py-6 sm:py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
       {/* Category Pills & Sorting */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-5 mb-8 pb-6 border-b border-white/10">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/10">
         
         {/* Category Tabs */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           {categories.map((cat) => {
             const isActive = selectedCategory === cat.id;
             return (
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-semibold transition-all ${
+                className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                   isActive
-                    ? "bg-green-500/20 text-green-300 border-2 border-green-500/40 shadow-lg shadow-green-500/15"
+                    ? "bg-green-500/20 text-green-300 border-2 border-green-500/40 shadow-md shadow-green-500/15"
                     : "bg-white/[0.04] text-slate-300 hover:text-white hover:bg-white/10 border border-white/10"
                 }`}
               >
@@ -90,12 +90,12 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
         </div>
 
         {/* Sort Controls */}
-        <div className="flex items-center gap-3 self-end lg:self-center shrink-0">
-          <span className="text-sm sm:text-base text-slate-400 font-medium">เรียงตาม:</span>
+        <div className="flex items-center gap-2.5 self-end lg:self-center shrink-0">
+          <span className="text-xs sm:text-sm text-slate-400 font-medium">เรียงตาม:</span>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-4 py-2.5 sm:py-3 rounded-xl bg-white/[0.06] border border-white/15 text-sm sm:text-base text-white focus:outline-none focus:border-green-400 font-sans cursor-pointer"
+            className="px-3 py-2 rounded-xl bg-white/[0.06] border border-white/15 text-xs sm:text-sm text-white focus:outline-none focus:border-green-400 font-sans cursor-pointer"
           >
             <option value="popular" className="bg-[#11131a] text-white">ยอดดาวน์โหลดสูงสุด</option>
             <option value="rating" className="bg-[#11131a] text-white">เรตติ้งคะแนนรีวิว</option>
@@ -106,11 +106,11 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
       </div>
 
       {/* Leaderboard Monetization Slot */}
-      <AdBanner slot="leaderboard" className="mb-8" />
+      <AdBanner slot="leaderboard" className="mb-6" />
 
       {/* Product Cards Grid */}
       {filteredProducts.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
           {filteredProducts.map((prod) => (
             <ProductCard
               key={prod.id}

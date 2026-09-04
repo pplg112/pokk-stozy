@@ -8,12 +8,14 @@
     --foreground: 210 40% 98%;
   }
 
+  html,
   body {
     background-color: #08090d;
     color: #e2e8f0;
     font-family: var(--font-prompt), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
     overflow-x: hidden;
+    max-width: 100vw;
   }
 }
 

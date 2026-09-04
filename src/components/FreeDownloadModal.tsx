@@ -109,45 +109,45 @@ export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto font-sans">
-      <div className="relative w-full max-w-2xl sm:max-w-3xl rounded-3xl bg-[#0e1017] border-2 border-white/15 shadow-2xl my-8 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto font-sans">
+      <div className="relative w-full max-w-xl sm:max-w-2xl rounded-2xl bg-[#0e1017] border border-white/15 shadow-2xl my-4 overflow-hidden max-h-[92vh] flex flex-col">
         
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-7 sm:px-8 py-5 border-b border-white/10 bg-white/[0.03]">
-          <div className="flex items-center gap-2.5 text-sm sm:text-base font-mono text-green-400 font-bold">
-            <Download className="w-5 h-5" />
+        <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 border-b border-white/10 bg-white/[0.03] shrink-0">
+          <div className="flex items-center gap-2 text-xs sm:text-sm font-mono text-green-400 font-bold">
+            <Download className="w-4 h-4" />
             <span className="text-white uppercase tracking-wider">
               ดาวน์โหลดสคริปต์ปรับแต่งฟรี
             </span>
           </div>
           <button
             onClick={handleReset}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-7 sm:p-10 space-y-6">
+        <div className="p-5 sm:p-6 space-y-4 overflow-y-auto">
           
           {/* Product Header */}
-          <div className="p-5 sm:p-6 rounded-2xl bg-white/[0.04] border border-white/10 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-xs sm:text-sm font-mono text-cyan-300 font-semibold">
-                <FileCode2 className="w-4 h-4 text-cyan-400" />
+          <div className="p-3.5 sm:p-4 rounded-xl bg-white/[0.04] border border-white/10 flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-xs font-mono text-cyan-300 font-semibold">
+                <FileCode2 className="w-3.5 h-3.5 text-cyan-400" />
                 <span>{product.fileFormat} • {product.fileSize}</span>
                 <span className="text-slate-600">•</span>
                 <span className="text-slate-400">{product.version}</span>
               </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-white font-sans">
+              <h3 className="text-base sm:text-lg font-bold text-white font-sans">
                 {product.name}
               </h3>
-              <p className="text-sm sm:text-base text-slate-300">
+              <p className="text-xs sm:text-sm text-slate-300">
                 {product.tagline}
               </p>
             </div>
-            <span className="self-start sm:self-center px-4 py-1.5 rounded-xl bg-green-500/20 text-green-400 font-mono text-sm sm:text-base font-bold shrink-0 border border-green-500/40">
+            <span className="self-start sm:self-center px-3 py-1 rounded-lg bg-green-500/20 text-green-400 font-mono text-xs sm:text-sm font-bold shrink-0 border border-green-500/40">
               ฟรี 100%
             </span>
           </div>
@@ -156,12 +156,12 @@ export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
           {step === "initial" && (
             <>
               {/* Safety & Instructions Alert */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-3 text-sm sm:text-base font-sans">
-                <div className="flex items-center gap-2.5 text-amber-400 font-bold font-mono text-base">
-                  <ShieldCheck className="w-5 h-5 shrink-0" />
+              <div className="p-3.5 sm:p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-2 text-xs sm:text-sm font-sans">
+                <div className="flex items-center gap-2 text-amber-400 font-bold font-mono text-xs sm:text-sm">
+                  <ShieldCheck className="w-4 h-4 shrink-0" />
                   <span>คำแนะนำเพื่อความปลอดภัยสูงสุด:</span>
                 </div>
-                <ul className="space-y-2 text-slate-200 pl-6 list-disc text-sm sm:text-base leading-relaxed">
+                <ul className="space-y-1.5 text-slate-200 pl-5 list-disc text-xs sm:text-sm leading-relaxed">
                   <li>สคริปต์ทุกตัวสามารถเปิดดู Source Code ด้วย Notepad ได้ก่อนรัน</li>
                   <li>ระบบมีคำสั่งสร้าง <strong className="text-white">System Restore Point</strong> สำรองอัตโนมัติ</li>
                   <li>มีไฟล์ <strong className="text-white">Revert Script</strong> แนบให้คืนค่าเดิมได้ตลอดเวลา</li>
