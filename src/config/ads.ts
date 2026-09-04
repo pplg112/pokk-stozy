@@ -39,6 +39,8 @@ export interface AdConfiguration {
     description: string;
     buttonText: string;
     targetUrl: string;
+    couponCode?: string;
+    logoUrl?: string;
     badgeText: string;
   };
 }
@@ -71,16 +73,18 @@ export const ADS_CONFIG: AdConfiguration = {
 
   downloadMonetization: {
     countdownSeconds: 5,
-    openSmartLinkOnDownload: true, // เปิดลิงก์สปอนเซอร์/SmartLink ในแท็บใหม่เมื่อกดเริ่มดาวน์โหลด
-    smartLinkUrl: "https://www.profitablecpmrate.com/f9m40q6f?key=e86d2673d368d4a9768a35ea285098a7",
+    openSmartLinkOnDownload: true, // เปิดลิงก์สปอนเซอร์ ExitLag ในแท็บใหม่เมื่อกดดาวน์โหลด
+    smartLinkUrl: "https://www.exitlag.com/refer/10348583",
   },
 
   affiliatePartner: {
     enabled: true,
-    title: "ExitLag - ซอฟต์แวร์ลดปิงและ Packet Loss 70%",
-    description: "แนะนำสำหรับนักแข่ง: เชื่อมต่อ Multipath ทะลวงอาการแล็ก ลด Ping เกมออนไลน์ทั่วโลก",
-    buttonText: "ทดลองใช้งานฟรี 3 วัน",
-    targetUrl: "https://www.exitlag.com/aff.php?aff=1000",
-    badgeText: "พาร์ทเนอร์แนะนำ",
+    title: "ExitLag - ซอฟต์แวร์ลดปิงและแก้ Packet Loss ระดับ Esports",
+    description: "ระบบเชื่อมต่อ Multipath วิ่งตรงสู่เซิร์ฟเวอร์เกม ลด Ping สูงสุด 70% พร้อมระบบ Traffic Shaper เพิ่มความนิ่ง",
+    buttonText: "รับสิทธิ์ใช้งานฟรี 3 วัน",
+    targetUrl: "https://www.exitlag.com/refer/10348583",
+    couponCode: "10348583",
+    badgeText: "พาร์ทเนอร์ทางการ",
+    logoUrl: "/exitlag-logo.png",
   },
 };
