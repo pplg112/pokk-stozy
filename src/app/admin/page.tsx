@@ -817,11 +817,11 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {formData.imageUrl ? (
-                  <div className="relative w-full h-36 sm:h-44 rounded-xl overflow-hidden border border-white/10 bg-black/40 group/cover">
+                  <div className="relative w-full aspect-video max-h-56 rounded-xl overflow-hidden border border-white/10 bg-black/60 flex items-center justify-center group/cover">
                     <img
                       src={formData.imageUrl}
                       alt="Cover Preview"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                     />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/cover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       <button

@@ -41,20 +41,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       />
 
       <div className="relative z-10">
-        {/* Product Cover Image / Banner */}
+        {/* Product Cover Image / Banner (Aspect 16:9 Full View) */}
         {product.imageUrl ? (
-          <div 
-            onClick={() => onViewDetails(product)}
-            className="relative w-full h-36 sm:h-40 rounded-xl overflow-hidden mb-3.5 bg-black/50 border border-white/10 cursor-pointer group/img"
-          >
-            <img 
-              src={product.imageUrl} 
-              alt={product.name}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-108" 
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0c0e17] via-black/20 to-transparent" />
-            <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/75 backdrop-blur-md border border-white/15 text-xs font-mono text-cyan-300 font-semibold">
+          <div className="mb-3.5">
+            <div 
+              onClick={() => onViewDetails(product)}
+              className="relative w-full aspect-video rounded-xl overflow-hidden bg-black/60 border border-white/10 cursor-pointer group/img"
+            >
+              <img 
+                src={product.imageUrl} 
+                alt={product.name}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105" 
+              />
+            </div>
+
+            {/* Meta badges placed cleanly below image so nothing is covered */}
+            <div className="flex items-center justify-between gap-2 mt-2.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-white/[0.05] border border-white/10 text-xs font-mono text-cyan-300 font-semibold group-hover:border-cyan-500/30 transition-colors">
                 <FileCode2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                 <span>{product.fileFormat}</span>
                 <span className="text-slate-600">•</span>
@@ -65,7 +68,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   ยอดนิยม
                 </span>
               ) : (
-                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-slate-300 border border-white/15">
+                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-white/[0.04] text-slate-300 border border-white/10">
                   {product.version}
                 </span>
               )}
