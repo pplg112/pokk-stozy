@@ -14,7 +14,7 @@ export const StoreHero: React.FC = () => {
       </div>
 
       {/* Clean Headline */}
-      <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white mb-3.5 leading-tight">
+      <h1 className="text-2xl sm:text-4xl lg:text-5xl font-bold tracking-normal text-white mb-4 leading-snug sm:leading-tight">
         ศูนย์รวมไฟล์และสคริปต์ <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-300 to-cyan-400">Optimize PC</span> แจกฟรี
       </h1>
       
