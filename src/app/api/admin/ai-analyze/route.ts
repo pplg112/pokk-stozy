@@ -138,24 +138,43 @@ function fallbackAnalyzeCode(filename: string, content: string): AnalysisResult 
   };
 }
 
+function cleanAndParseJson(raw: string): any {
+  if (!raw) throw new Error("Empty AI response");
+  let cleaned = raw.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  }
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+  }
+  return JSON.parse(cleaned);
+}
+
 export async function POST(request: NextRequest) {
   if (!isAuthenticated(request)) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
+  let reqFilename = "script.bat";
+  let reqContent = "";
+
   try {
     const body = await request.json();
     const { filename, content, userApiKey } = body;
+    reqFilename = filename || "script.bat";
+    reqContent = content || "";
 
     if (!content && !filename) {
       return NextResponse.json({ success: false, error: "Missing filename or content" }, { status: 400 });
     }
 
-    const apiKey = userApiKey || process.env.GEMINI_API_KEY;
+    const apiKey = (userApiKey || process.env.GEMINI_API_KEY || "").trim();
 
-    // If no API Key is provided, use Built-in Heuristic Analyzer
+    // If no API Key is provided, use Built-in Intelligent Code Parser
     if (!apiKey) {
-      const fallbackResult = fallbackAnalyzeCode(filename || "script.bat", content || "");
+      const fallbackResult = fallbackAnalyzeCode(reqFilename, reqContent);
       return NextResponse.json({
         success: true,
         isGemini: false,
@@ -164,12 +183,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Call Google Gemini API (gemini-2.0-flash or gemini-1.5-flash)
+    // Call Google Gemini API (gemini-1.5-flash standard first, then gemini-2.0-flash)
     const prompt = `You are an elite Windows OS Esports Optimization Specialist and software packager for "Pokky Optimize Shop".
-Analyze the following script code (filename: "${filename}"):
+Analyze the following script code (filename: "${reqFilename}"):
 
 === SCRIPT CODE START ===
-${(content || "").slice(0, 15000)}
+${(reqContent).slice(0, 15000)}
 === SCRIPT CODE END ===
 
 Analyze what this script modifies in Windows (Registry, Services, Network, GPU, BCD, Timer Resolution, Power Plan, etc.).
@@ -197,78 +216,72 @@ You MUST respond strictly with a valid JSON object matching this exact schema:
 
 Do NOT wrap in markdown fences other than raw JSON or json block. Respond ONLY with valid JSON.`;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const candidateModels = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
+    let lastError = "";
 
-    const geminiRes = await fetch(geminiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.2,
-        },
-      }),
-    });
-
-    if (!geminiRes.ok) {
-      // If 2.0-flash failed, try 1.5-flash fallback
-      const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-      const geminiRes15 = await fetch(fallbackUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: "application/json",
-            temperature: 0.2,
+    for (const model of candidateModels) {
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const geminiRes = await fetch(geminiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
           },
-        }),
-      });
-
-      if (!geminiRes15.ok) {
-        const errorText = await geminiRes15.text();
-        console.error("Gemini API Error:", errorText);
-        // Fallback to local heuristic parser
-        const fallbackResult = fallbackAnalyzeCode(filename || "script.bat", content || "");
-        return NextResponse.json({
-          success: true,
-          isGemini: false,
-          fallbackReason: "Gemini API key invalid or quota exceeded",
-          data: fallbackResult,
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0.2,
+            },
+          }),
         });
+
+        if (geminiRes.ok) {
+          const data = await geminiRes.json();
+          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (rawText) {
+            const parsed = cleanAndParseJson(rawText);
+            return NextResponse.json({
+              success: true,
+              isGemini: true,
+              model,
+              data: parsed,
+            });
+          }
+        } else {
+          const errBody = await geminiRes.text();
+          try {
+            const errObj = JSON.parse(errBody);
+            lastError = errObj.error?.message || errBody;
+          } catch {
+            lastError = errBody;
+          }
+          console.warn(`Gemini model ${model} returned error:`, lastError);
+        }
+      } catch (callErr: any) {
+        lastError = callErr?.message || String(callErr);
+        console.warn(`Gemini model ${model} fetch failed:`, lastError);
       }
-
-      const data15 = await geminiRes15.json();
-      const rawText = data15.candidates?.[0]?.content?.parts?.[0]?.text;
-      const parsed = JSON.parse(rawText);
-
-      return NextResponse.json({
-        success: true,
-        isGemini: true,
-        model: "gemini-1.5-flash",
-        data: parsed,
-      });
     }
 
-    const data = await geminiRes.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    const parsed = JSON.parse(rawText);
-
-    return NextResponse.json({
-      success: true,
-      isGemini: true,
-      model: "gemini-2.0-flash",
-      data: parsed,
-    });
-  } catch (err: any) {
-    console.error("AI Analysis failed:", err);
-    // Graceful fallback to heuristic
-    const fallbackResult = fallbackAnalyzeCode("script.bat", "");
+    // If all models failed, gracefully fallback to smart heuristic and report reason
+    const fallbackResult = fallbackAnalyzeCode(reqFilename, reqContent);
     return NextResponse.json({
       success: true,
       isGemini: false,
+      fallbackReason: lastError || "Google Gemini API ไม่สามารถประมวลผลได้",
+      data: fallbackResult,
+    });
+  } catch (err: any) {
+    console.error("AI Analysis failed:", err);
+    const fallbackResult = fallbackAnalyzeCode(reqFilename, reqContent);
+    return NextResponse.json({
+      success: true,
+      isGemini: false,
+      fallbackReason: err?.message || "ระบบขัดข้องระหว่างวิเคราะห์โค้ด",
       data: fallbackResult,
     });
   }
 }
+

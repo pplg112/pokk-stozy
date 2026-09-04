@@ -57,6 +57,9 @@ export default function AdminDashboardPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiStatusMessage, setAiStatusMessage] = useState("");
+  const [isTestingApiKey, setIsTestingApiKey] = useState(false);
+  const [testKeyResult, setTestKeyResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [showApiKey, setShowApiKey] = useState(false);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -152,11 +155,51 @@ export default function AdminDashboardPage() {
     setTempApiKey(savedKey);
   }, []);
 
+  const handleTestApiKey = async () => {
+    const keyToTest = tempApiKey.trim();
+    if (!keyToTest) {
+      setTestKeyResult({ success: false, message: "กรุณาระบุ API Key ก่อนกดทดสอบ" });
+      return;
+    }
+
+    setIsTestingApiKey(true);
+    setTestKeyResult(null);
+
+    try {
+      const res = await fetch("/api/admin/gemini-test", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ apiKey: keyToTest }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTestKeyResult({
+          success: true,
+          message: data.message || `เชื่อมต่อสำเร็จ (${data.model || "Gemini Flash"})`,
+        });
+      } else {
+        setTestKeyResult({
+          success: false,
+          message: data.error || "ไม่สามารถเชื่อมต่อ Gemini ได้",
+        });
+      }
+    } catch {
+      setTestKeyResult({
+        success: false,
+        message: "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์",
+      });
+    } finally {
+      setIsTestingApiKey(false);
+    }
+  };
+
   const handleSaveApiKey = () => {
     const trimmed = tempApiKey.trim();
     localStorage.setItem("pokky_gemini_api_key", trimmed);
     setGeminiApiKey(trimmed);
     setIsApiKeyModalOpen(false);
+    setTestKeyResult(null);
     setMessage(trimmed ? "บันทึก Google Gemini API Key เรียบร้อยแล้ว (เปิดใช้ AI Auto-Pilot ขั้นสูง)" : "ยกเลิกการใช้ Gemini Key (กลับสู่ระบบ Built-in Parser)");
     setTimeout(() => setMessage(""), 4500);
   };
@@ -293,11 +336,18 @@ export default function AdminDashboardPage() {
           imageUrl: prev.imageUrl || CATEGORY_COVER_PRESETS[d.category] || CATEGORY_COVER_PRESETS["bundles"],
         }));
 
-        const engineLabel = analyzeData.isGemini
-          ? `Google Gemini AI (${analyzeData.model || "Flash"})`
-          : "ระบบ AI Parser";
-        setMessage(`[AI Auto-Pilot] ${engineLabel} วิเคราะห์สคริปต์และกรอกข้อมูลครบทุกช่องอัตโนมัติแล้ว!`);
-        setTimeout(() => setMessage(""), 5000);
+        if (analyzeData.isGemini) {
+          setMessage(`[AI Auto-Pilot] Google Gemini AI (${analyzeData.model || "Flash"}) วิเคราะห์โค้ดและสร้างเนื้อหาเฉพาะของไฟล์นี้เรียบร้อยแล้ว!`);
+          setTimeout(() => setMessage(""), 5000);
+        } else if (geminiApiKey) {
+          showAlert(
+            `ไม่สามารถเรียกใช้งาน Google Gemini ได้ (${analyzeData.fallbackReason || "ตรวจสอบความถูกต้องของคีย์หรือโควตา"}) ระบบจึงสลับมาใช้ตัววิเคราะห์ออฟไลน์แทน`,
+            "แจ้งเตือนสถานะ Gemini AI"
+          );
+        } else {
+          setMessage("[AI Auto-Pilot] ระบบ AI Parser วิเคราะห์สคริปต์และกรอกข้อมูลอัตโนมัติแล้ว");
+          setTimeout(() => setMessage(""), 5000);
+        }
       } else {
         // Fallback: at least set basic uploaded file data
         setFormData((prev) => ({
@@ -366,11 +416,18 @@ export default function AdminDashboardPage() {
           revertScript: d.revertScript || prev.revertScript,
         }));
 
-        const engineLabel = analyzeData.isGemini
-          ? `Google Gemini AI (${analyzeData.model || "Flash"})`
-          : "ระบบ AI Parser";
-        setMessage(`[AI Auto-Pilot] ${engineLabel} อัปเดตข้อมูลและสคริปต์ Revert จากโค้ดปัจจุบันเรียบร้อยแล้ว!`);
-        setTimeout(() => setMessage(""), 5000);
+        if (analyzeData.isGemini) {
+          setMessage(`[AI Auto-Pilot] Google Gemini AI (${analyzeData.model || "Flash"}) อัปเดตข้อมูลและสคริปต์ Revert สำเร็จแล้ว!`);
+          setTimeout(() => setMessage(""), 5000);
+        } else if (geminiApiKey) {
+          showAlert(
+            `ไม่สามารถเรียกใช้งาน Google Gemini ได้ (${analyzeData.fallbackReason || "ตรวจสอบความถูกต้องของคีย์หรือโควตา"}) ระบบจึงสลับมาใช้ตัววิเคราะห์ออฟไลน์แทน`,
+            "แจ้งเตือนสถานะ Gemini AI"
+          );
+        } else {
+          setMessage("[AI Auto-Pilot] ระบบ AI Parser อัปเดตข้อมูลจากโค้ดเรียบร้อยแล้ว");
+          setTimeout(() => setMessage(""), 5000);
+        }
       }
     } catch (err) {
       showAlert("ไม่สามารถวิเคราะห์ด้วย AI ได้", "ระบบวิเคราะห์ขัดข้อง");
@@ -1127,16 +1184,69 @@ export default function AdminDashboardPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-mono text-slate-300 font-semibold mb-2">
-                  Gemini API Key
-                </label>
-                <input
-                  type="password"
-                  value={tempApiKey}
-                  onChange={(e) => setTempApiKey(e.target.value)}
-                  placeholder="AIzaSy..."
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/15 text-white font-mono text-xs sm:text-sm focus:outline-none focus:border-green-400 transition-colors"
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-mono text-slate-300 font-semibold">
+                    Gemini API Key
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 font-mono transition-colors"
+                  >
+                    {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    <span>{showApiKey ? "ซ่อนคีย์" : "แสดงคีย์"}</span>
+                  </button>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <input
+                    type={showApiKey ? "text" : "password"}
+                    value={tempApiKey}
+                    onChange={(e) => {
+                      setTempApiKey(e.target.value);
+                      setTestKeyResult(null);
+                    }}
+                    placeholder="AIzaSy..."
+                    className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/15 text-white font-mono text-xs sm:text-sm focus:outline-none focus:border-green-400 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleTestApiKey}
+                    disabled={isTestingApiKey || !tempApiKey.trim()}
+                    className="px-4 py-3 rounded-xl text-xs font-mono font-bold bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 transition-all flex items-center gap-1.5 disabled:opacity-40 cursor-pointer shrink-0"
+                  >
+                    {isTestingApiKey ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>กำลังทดสอบ...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>ทดสอบคีย์</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Test Result Feedback Box */}
+                {testKeyResult && (
+                  <div
+                    className={`mt-2.5 p-3 rounded-xl border text-xs font-mono flex items-start gap-2 animate-in fade-in duration-200 ${
+                      testKeyResult.success
+                        ? "bg-green-500/10 border-green-500/30 text-green-300"
+                        : "bg-red-500/10 border-red-500/30 text-red-300"
+                    }`}
+                  >
+                    {testKeyResult.success ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                    )}
+                    <span className="leading-relaxed">{testKeyResult.message}</span>
+                  </div>
+                )}
+
                 <span className="text-[11px] text-slate-400 mt-1.5 block">
                   คีย์จะถูกบันทึกอย่างปลอดภัยในเบราว์เซอร์ของคุณ (Local Storage)
                 </span>

@@ -1,0 +1,69 @@
+import { NextRequest, NextResponse } from "next/server";
+import { ADMIN_COOKIE_NAME, ADMIN_SECRET_TOKEN } from "@/lib/auth";
+
+function isAuthenticated(request: NextRequest): boolean {
+  const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value || request.headers.get("x-admin-token");
+  return token === ADMIN_SECRET_TOKEN;
+}
+
+export async function POST(request: NextRequest) {
+  if (!isAuthenticated(request)) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const apiKey = (body.apiKey || "").trim();
+
+    if (!apiKey) {
+      return NextResponse.json({ success: false, error: "กรุณาระบุ Gemini API Key" }, { status: 400 });
+    }
+
+    // Try gemini-1.5-flash first (standard default in Google AI Studio)
+    const modelsToTest = ["gemini-1.5-flash", "gemini-2.0-flash"];
+    let lastError = "";
+
+    for (const model of modelsToTest) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: "Hello! Reply with 'OK' in plain text." }] }],
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const reply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "OK";
+        return NextResponse.json({
+          success: true,
+          model,
+          message: `เชื่อมต่อ Google Gemini API สำเร็จ (โมเดล: ${model})`,
+          reply,
+        });
+      } else {
+        const errText = await res.text();
+        try {
+          const errObj = JSON.parse(errText);
+          lastError = errObj.error?.message || errText;
+        } catch {
+          lastError = errText;
+        }
+      }
+    }
+
+    return NextResponse.json({
+      success: false,
+      error: lastError || "ไม่สามารถเชื่อมต่อ Google Gemini API ได้ กรุณาตรวจสอบความถูกต้องของ API Key",
+    });
+  } catch (err: any) {
+    return NextResponse.json({
+      success: false,
+      error: err?.message || "เกิดข้อผิดพลาดในการทดสอบเชื่อมต่อ",
+    });
+  }
+}
