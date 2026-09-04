@@ -33,7 +33,7 @@ export const Footer: React.FC = () => {
             rel="noopener noreferrer"
             className="text-slate-200 hover:text-white flex items-center gap-2.5 transition-colors px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs sm:text-sm font-medium group"
           >
-            <img src="/discord-logo.png" alt="Discord" className="w-4 h-4 object-contain group-hover:scale-110 transition-transform" />
+            <img src="/discord-logo.png" alt="Discord" className="h-4 sm:h-4.5 w-auto object-contain group-hover:scale-110 transition-transform" />
             Discord Community
           </a>
           <span className="text-slate-500 text-xs">&copy; {new Date().getFullYear()} Pokky Optimize.</span>

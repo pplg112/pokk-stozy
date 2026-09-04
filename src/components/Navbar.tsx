@@ -58,9 +58,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             href="https://discord.gg/eHa8MQu7mz"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-[#5865F2]/20 hover:bg-[#5865F2]/30 border border-[#5865F2]/40 hover:border-[#5865F2]/60 transition-all shadow-sm group"
+            className="inline-flex items-center gap-2.5 px-3.5 sm:px-4.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-[#5865F2]/20 hover:bg-[#5865F2]/30 border border-[#5865F2]/40 hover:border-[#5865F2]/60 transition-all shadow-sm group"
           >
-            <img src="/discord-logo.png" alt="Discord" className="w-4 h-4 sm:w-4.5 sm:h-4.5 object-contain group-hover:scale-110 transition-transform" />
+            <img src="/discord-logo.png" alt="Discord" className="h-5 sm:h-5.5 w-auto object-contain group-hover:scale-110 transition-transform drop-shadow" />
             <span>Discord ชุมชน</span>
           </a>
         </div>
