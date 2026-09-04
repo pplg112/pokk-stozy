@@ -803,7 +803,7 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-mono text-slate-300 font-semibold flex items-center gap-2">
                     <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>รูปภาพปกสคริปต์ (Cover Image / Thumbnail)</span>
+                    <span>รูปภาพปกสคริปต์ (แนะนำแนวนอน 16:9 เช่น 1280x720 หรือ 1920x1080)</span>
                   </label>
                   {formData.imageUrl && (
                     <button
