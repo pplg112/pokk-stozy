@@ -211,14 +211,19 @@ export const db = {
       active: data.active ?? true,
       features: (data.features || ["ปรับแต่งระบบอัตโนมัติ", "ปลอดภัย มีไฟล์ Revert ในตัว"]).map(sanitizeString),
       requirements: (data.requirements || ["Windows 10 หรือ 11 (64-bit)", "สิทธิ์ Administrator"]).map(sanitizeString),
-      includedFiles: (data.includedFiles || [
-        { filename: `${id}.bat`, description: "ไฟล์สคริปต์ปรับแต่งหลัก" },
-        { filename: `REVERT_${id}.bat`, description: "สคริปต์กู้คืนค่ามาตรฐานเดิม" }
-      ]).map(f => ({
+      includedFiles: (data.includedFiles && data.includedFiles.length > 0
+        ? data.includedFiles
+        : [
+            { filename: `${id}.bat`, description: "ไฟล์สคริปต์ปรับแต่งหลัก" },
+            { filename: `REVERT_${id}.bat`, description: "สคริปต์กู้คืนค่ามาตรฐานเดิม" }
+          ]
+      ).map(f => ({
         filename: sanitizeString(f.filename),
         description: sanitizeString(f.description)
       })),
-      scriptContent: sanitizeCode(data.scriptContent || `@echo off\ntitle ${data.name}\necho [POKKY OPTIMIZE] กำลังดำเนินการปรับแต่ง...\npause`),
+      scriptContent: data.scriptContent?.startsWith("data:")
+        ? data.scriptContent
+        : sanitizeCode(data.scriptContent || `@echo off\ntitle ${data.name}\necho [POKKY OPTIMIZE] กำลังดำเนินการปรับแต่ง...\npause`),
       revertScript: sanitizeCode(data.revertScript || `@echo off\ntitle Revert - ${data.name}\necho คืนค่าเดิมของระบบเรียบร้อย\npause`),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -254,8 +259,11 @@ export const db = {
     if (sanitizedUpdates.compatibility !== undefined) sanitizedUpdates.compatibility = sanitizeString(sanitizedUpdates.compatibility);
     if (sanitizedUpdates.fileFormat !== undefined) sanitizedUpdates.fileFormat = sanitizeString(sanitizedUpdates.fileFormat);
     if (sanitizedUpdates.fileSize !== undefined) sanitizedUpdates.fileSize = sanitizeString(sanitizedUpdates.fileSize);
-    if (sanitizedUpdates.version !== undefined) sanitizedUpdates.version = sanitizeString(sanitizedUpdates.version);
-    if (sanitizedUpdates.scriptContent !== undefined) sanitizedUpdates.scriptContent = sanitizeCode(sanitizedUpdates.scriptContent);
+    if (sanitizedUpdates.scriptContent !== undefined) {
+      sanitizedUpdates.scriptContent = sanitizedUpdates.scriptContent.startsWith("data:")
+        ? sanitizedUpdates.scriptContent
+        : sanitizeCode(sanitizedUpdates.scriptContent);
+    }
     if (sanitizedUpdates.revertScript !== undefined) sanitizedUpdates.revertScript = sanitizeCode(sanitizedUpdates.revertScript);
     if (sanitizedUpdates.features) sanitizedUpdates.features = sanitizedUpdates.features.map(sanitizeString);
     if (sanitizedUpdates.requirements) sanitizedUpdates.requirements = sanitizedUpdates.requirements.map(sanitizeString);

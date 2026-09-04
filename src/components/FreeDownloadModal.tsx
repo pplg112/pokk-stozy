@@ -167,6 +167,24 @@ export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
                 </ul>
               </div>
 
+              {/* Real ZIP Archive Files Preview (Only for ZIP packages) */}
+              {product.fileFormat?.toUpperCase().includes("ZIP") && product.includedFiles && product.includedFiles.length > 0 && (
+                <div className="p-3.5 sm:p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/25 space-y-2 font-sans">
+                  <div className="text-xs font-mono font-bold text-cyan-400 flex items-center justify-between">
+                    <span>ไฟล์ที่จะได้รับภายในแพ็กเกจ ZIP:</span>
+                    <span className="text-[11px] text-slate-400 font-normal">({product.includedFiles.length} ไฟล์)</span>
+                  </div>
+                  <div className="max-h-32 overflow-y-auto space-y-1 font-mono text-xs pr-1">
+                    {product.includedFiles.map((f, i) => (
+                      <div key={i} className="px-3 py-1.5 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between">
+                        <span className="text-cyan-300 truncate">{f.filename}</span>
+                        <span className="text-[11px] text-slate-400 font-sans">{f.description}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Start Preparation Button */}
               <button
                 onClick={handleStartPreparation}

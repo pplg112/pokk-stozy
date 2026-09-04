@@ -108,6 +108,7 @@ export default function AdminDashboardPage() {
     popular: false,
     active: true,
     imageUrl: "",
+    includedFiles: [] as { filename: string; description: string }[],
     scriptContent: `@echo off\ntitle Optimization Script\necho [POKKY OPTIMIZE] กำลังเริ่มการปรับแต่ง...\npause`,
     revertScript: `@echo off\ntitle Revert Script\necho [POKKY OPTIMIZE] คืนค่าเดิมของระบบ...\npause`,
   });
@@ -227,6 +228,7 @@ export default function AdminDashboardPage() {
       popular: false,
       active: true,
       imageUrl: CATEGORY_COVER_PRESETS["bundles"],
+      includedFiles: [],
       scriptContent: `@echo off\ntitle My Optimization Script\necho [POKKY OPTIMIZE] กำลังเริ่มการปรับแต่ง...\npause`,
       revertScript: `@echo off\ntitle Revert Script\necho [POKKY OPTIMIZE] คืนค่าเดิมของระบบ...\npause`,
     });
@@ -247,6 +249,7 @@ export default function AdminDashboardPage() {
       popular: product.popular,
       active: product.active,
       imageUrl: product.imageUrl || CATEGORY_COVER_PRESETS[product.category] || "",
+      includedFiles: product.includedFiles || [],
       scriptContent: product.scriptContent,
       revertScript: product.revertScript,
     });
@@ -300,6 +303,8 @@ export default function AdminDashboardPage() {
       const fileFormat = uploadData.fileFormat || ".BAT";
       const fileSize = uploadData.fileSize || "50 KB";
 
+      const uploadedIncludedFiles = uploadData.includedFiles || [];
+
       // 2. Call Gemini AI / Parser analysis
       setAiStatusMessage(
         geminiApiKey
@@ -313,7 +318,7 @@ export default function AdminDashboardPage() {
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({
           filename: file.name,
-          content: scriptContent,
+          content: uploadData.analysisContent || scriptContent,
           userApiKey: geminiApiKey,
         }),
       });
@@ -331,6 +336,7 @@ export default function AdminDashboardPage() {
           compatibility: d.compatibility || prev.compatibility,
           fileFormat: fileFormat,
           fileSize: fileSize,
+          includedFiles: uploadedIncludedFiles.length > 0 ? uploadedIncludedFiles : prev.includedFiles,
           scriptContent: scriptContent,
           revertScript: d.revertScript || prev.revertScript,
           imageUrl: prev.imageUrl || CATEGORY_COVER_PRESETS[d.category] || CATEGORY_COVER_PRESETS["bundles"],
@@ -355,9 +361,10 @@ export default function AdminDashboardPage() {
           name: prev.name || file.name.replace(/\.[^/.]+$/, ""),
           fileFormat: fileFormat,
           fileSize: fileSize,
+          includedFiles: uploadedIncludedFiles.length > 0 ? uploadedIncludedFiles : prev.includedFiles,
           scriptContent: scriptContent,
         }));
-        setMessage(`อัปโหลดไฟล์ "${file.name}" สำเร็จและนำโค้ดเข้าสู่ระบบแล้ว`);
+        setMessage(`อัปโหลดไฟล์ "${file.name}" สำเร็จและนำเข้าสู่ระบบแล้ว`);
         setTimeout(() => setMessage(""), 4000);
       }
     } catch (err) {
@@ -1045,40 +1052,72 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              {/* Code Editor for Main Script */}
-              <div>
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                  <label className="text-xs font-mono text-slate-300 font-semibold flex items-center gap-2">
-                    <span>Source Code สคริปต์หลัก (.BAT / CMD Code) *</span>
-                    <span className="text-[11px] text-green-400">ไฟล์นี้จะถูกส่งให้ผู้ใช้ดาวน์โหลด</span>
-                  </label>
-                  <button
-                    type="button"
-                    disabled={isAnalyzing || !formData.scriptContent}
-                    onClick={handleTriggerAiAnalysis}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-green-500/15 hover:bg-green-500/25 border border-green-500/35 text-xs font-mono text-green-300 transition-colors disabled:opacity-40 cursor-pointer"
-                  >
-                    {isAnalyzing ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>กำลังวิเคราะห์...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5 text-green-400" />
-                        <span>วิเคราะห์ด้วย Gemini AI ซ้ำ</span>
-                      </>
-                    )}
-                  </button>
+              {/* Code Editor or ZIP Package Preview */}
+              {formData.fileFormat === ".ZIP" ? (
+                <div className="p-4 sm:p-5 rounded-2xl bg-cyan-950/20 border border-cyan-500/30 space-y-3 font-sans">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-cyan-400 font-mono text-xs sm:text-sm font-bold uppercase">
+                      <Layers className="w-4 h-4 text-cyan-400" />
+                      <span>แพ็กเกจไฟล์ ZIP ไบนารีแท้ (ขนาด: {formData.fileSize})</span>
+                    </div>
+                    <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                      ไบนารีสมบูรณ์ 100%
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    ไฟล์ ZIP นี้ถูกจัดเก็บในรูปแบบไบนารีสมบูรณ์ 100% ผู้ใช้จะได้รับไฟล์ .zip ที่เปิดใช้งานและแตกไฟล์ได้ทันทีโดยไม่เสียหาย
+                  </p>
+                  {formData.includedFiles && formData.includedFiles.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      <div className="text-[11px] font-mono text-slate-400 font-semibold">
+                        รายการไฟล์ที่ตรวจพบภายใน ZIP ({formData.includedFiles.length} ไฟล์):
+                      </div>
+                      <div className="max-h-40 overflow-y-auto space-y-1 pr-1 font-mono text-xs">
+                        {formData.includedFiles.map((file, fIdx) => (
+                          <div key={fIdx} className="px-3 py-2 rounded-xl bg-black/50 border border-white/10 flex items-center justify-between text-slate-200">
+                            <span className="text-cyan-300 truncate font-medium">{file.filename}</span>
+                            <span className="text-[11px] text-slate-400 shrink-0 font-sans">{file.description}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <textarea
-                  rows={8}
-                  required
-                  value={formData.scriptContent}
-                  onChange={(e) => setFormData({ ...formData, scriptContent: e.target.value })}
-                  className="w-full p-4 rounded-xl bg-black/60 border border-white/10 text-green-400 font-mono text-xs leading-relaxed focus:outline-none focus:border-green-400"
-                />
-              </div>
+              ) : (
+                <div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <label className="text-xs font-mono text-slate-300 font-semibold flex items-center gap-2">
+                      <span>Source Code สคริปต์หลัก (.BAT / CMD Code) *</span>
+                      <span className="text-[11px] text-green-400">ไฟล์นี้จะถูกส่งให้ผู้ใช้ดาวน์โหลด</span>
+                    </label>
+                    <button
+                      type="button"
+                      disabled={isAnalyzing || !formData.scriptContent}
+                      onClick={handleTriggerAiAnalysis}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-green-500/15 hover:bg-green-500/25 border border-green-500/35 text-xs font-mono text-green-300 transition-colors disabled:opacity-40 cursor-pointer"
+                    >
+                      {isAnalyzing ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>กำลังวิเคราะห์...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5 text-green-400" />
+                          <span>วิเคราะห์ด้วย Gemini AI ซ้ำ</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <textarea
+                    rows={8}
+                    required
+                    value={formData.scriptContent}
+                    onChange={(e) => setFormData({ ...formData, scriptContent: e.target.value })}
+                    className="w-full p-4 rounded-xl bg-black/60 border border-white/10 text-green-400 font-mono text-xs leading-relaxed focus:outline-none focus:border-green-400"
+                  />
+                </div>
+              )}
 
               {/* Code Editor for Revert Script */}
               <div>
