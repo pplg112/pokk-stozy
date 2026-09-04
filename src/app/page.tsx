@@ -8,6 +8,7 @@ import { ProductDetailModal } from "@/components/ProductDetailModal";
 import { FreeDownloadModal } from "@/components/FreeDownloadModal";
 import { FaqSection } from "@/components/FaqSection";
 import { Footer } from "@/components/Footer";
+import { CyberBackground } from "@/components/CyberBackground";
 import { DIGITAL_PRODUCTS } from "@/data/products";
 import { DigitalProduct, DownloadRecord } from "@/types";
 
@@ -72,10 +73,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-[#07080c] text-slate-100 flex flex-col font-sans selection:bg-green-400 selection:text-slate-950 relative overflow-x-hidden">
       
       {/* Dynamic Cyber Grid & Neon Ambient Glow Background */}
-      <div className="fixed inset-0 bg-grid-cyber pointer-events-none opacity-30 z-0" />
-      <div className="fixed -top-40 left-1/2 -translate-x-1/2 w-[850px] h-[500px] bg-gradient-to-b from-green-500/15 via-emerald-500/10 to-transparent blur-[140px] pointer-events-none z-0" />
-      <div className="fixed top-1/3 -left-48 w-[500px] h-[500px] bg-gradient-to-r from-cyan-500/10 to-transparent blur-[150px] pointer-events-none z-0" />
-      <div className="fixed bottom-0 -right-48 w-[600px] h-[450px] bg-gradient-to-l from-emerald-500/10 via-green-500/5 to-transparent blur-[150px] pointer-events-none z-0" />
+      <CyberBackground />
 
       {/* Header */}
       <div className="relative z-40">

@@ -52,12 +52,107 @@
 }
 
 .bg-grid-cyber {
-  background-size: 32px 32px;
+  background-size: 40px 40px;
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+}
+
+.bg-grid-dots {
+  background-size: 24px 24px;
+  background-image: radial-gradient(circle, rgba(74, 222, 128, 0.12) 1px, transparent 1px);
 }
 
 .bg-radial-vignette {
   background: radial-gradient(circle at 50% 10%, rgba(0, 240, 255, 0.08) 0%, transparent 70%);
+}
+
+/* Dynamic Cyber Background Animations */
+@keyframes orb-float-1 {
+  0%, 100% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(40px, -50px, 0) scale(1.12);
+  }
+}
+
+@keyframes orb-float-2 {
+  0%, 100% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-50px, 40px, 0) scale(1.15);
+  }
+}
+
+@keyframes orb-float-3 {
+  0%, 100% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(35px, 45px, 0) scale(0.92);
+  }
+}
+
+@keyframes cyber-scanline {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.4;
+  }
+  80% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+@keyframes spark-rise {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.7;
+  }
+  75% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(-260px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+.animate-orb-1 {
+  animation: orb-float-1 16s ease-in-out infinite;
+}
+
+.animate-orb-2 {
+  animation: orb-float-2 20s ease-in-out infinite;
+}
+
+.animate-orb-3 {
+  animation: orb-float-3 18s ease-in-out infinite;
+}
+
+.animate-cyber-scanline {
+  animation: cyber-scanline 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-spark-1 {
+  animation: spark-rise 6s ease-in-out infinite;
+}
+
+.animate-spark-2 {
+  animation: spark-rise 8s ease-in-out infinite 2s;
+}
+
+.animate-spark-3 {
+  animation: spark-rise 7s ease-in-out infinite 4s;
 }
