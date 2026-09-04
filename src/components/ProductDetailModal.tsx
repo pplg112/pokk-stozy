@@ -11,7 +11,6 @@ import {
   RotateCcw, 
   ShieldCheck, 
   Zap, 
-  Layers,
   MessageSquare,
   Image as ImageIcon,
   Trash2,
@@ -277,30 +276,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             {/* Description */}
             <div className="text-sm sm:text-base text-slate-200 leading-relaxed font-sans">
               {product.description}
-            </div>
-
-            {/* Included Files Tree List */}
-            <div className="p-5 sm:p-6 rounded-2xl bg-white/[0.03] border border-white/10">
-              <h4 className="text-sm sm:text-base font-mono font-bold text-white uppercase tracking-wider mb-3.5 flex items-center gap-2.5">
-                <Layers className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
-                รายการไฟล์ที่จะได้รับภายในแพ็กเกจ ({product.includedFiles.length} ไฟล์):
-              </h4>
-              <div className="space-y-2.5">
-                {product.includedFiles.map((file, idx) => (
-                  <div 
-                    key={idx}
-                    className="p-3 sm:p-3.5 rounded-xl bg-black/50 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 font-mono text-xs sm:text-sm"
-                  >
-                    <div className="flex items-center gap-2 text-cyan-300 font-semibold">
-                      <FileCode2 className="w-4 h-4 text-cyan-400 shrink-0" />
-                      <span className="text-white font-medium">{file.filename}</span>
-                    </div>
-                    <span className="text-xs text-slate-400 font-sans">
-                      {file.description}
-                    </span>
-                  </div>
-                ))}
-              </div>
             </div>
 
             {/* Features & Requirements */}

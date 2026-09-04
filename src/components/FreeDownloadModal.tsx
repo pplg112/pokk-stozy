@@ -11,8 +11,6 @@ import {
   CheckCircle2, 
   ShieldCheck, 
   FileCode2, 
-  Layers,
-  Terminal,
   Clock,
   Sparkles,
   Loader2
@@ -167,33 +165,6 @@ export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
                   <li>มีไฟล์ <strong className="text-white">Revert Script</strong> แนบให้คืนค่าเดิมได้ตลอดเวลา</li>
                   <li>คลิกขวาที่ไฟล์แล้วเลือก <strong className="text-white">"Run as administrator"</strong> เพื่อใช้งาน</li>
                 </ul>
-              </div>
-
-              {/* Included Files Snippet */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm sm:text-base font-mono text-slate-300 font-semibold">
-                  <span className="flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-green-400" />
-                    ไฟล์ในแพ็กเกจ ({product.includedFiles.length} ไฟล์):
-                  </span>
-                  <span className="text-xs sm:text-sm text-slate-400 font-normal">รองรับ {product.compatibility}</span>
-                </div>
-                <div className="max-h-44 overflow-y-auto space-y-2 pr-1">
-                  {product.includedFiles.map((file, idx) => (
-                    <div
-                      key={idx}
-                      className="px-4 py-3 rounded-xl bg-black/50 border border-white/10 text-sm font-mono flex items-center justify-between gap-3"
-                    >
-                      <div className="flex items-center gap-2.5 text-slate-200 truncate">
-                        <Terminal className="w-4 h-4 text-slate-400 shrink-0" />
-                        <span className="truncate font-medium">{file.filename}</span>
-                      </div>
-                      <span className="text-xs text-slate-400 shrink-0 hidden sm:inline">
-                        {file.description}
-                      </span>
-                    </div>
-                  ))}
-                </div>
               </div>
 
               {/* Start Preparation Button */}
