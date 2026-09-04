@@ -216,7 +216,35 @@ You MUST respond strictly with a valid JSON object matching this exact schema:
 
 Do NOT wrap in markdown fences other than raw JSON or json block. Respond ONLY with valid JSON.`;
 
-    const candidateModels = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
+    // Priority models list (headed by Google's recommended gemini-3.6-flash)
+    let candidateModels = [
+      "gemini-3.6-flash",
+      "gemini-2.5-flash",
+      "gemini-1.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-pro"
+    ];
+
+    // Try to dynamically discover models supported by this API key
+    try {
+      const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+      const listRes = await fetch(listUrl, {
+        headers: { "x-goog-api-key": apiKey }
+      });
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        if (Array.isArray(listData.models)) {
+          const available = listData.models
+            .filter((m: any) => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes("generateContent"))
+            .map((m: any) => m.name.replace(/^models\//, ""));
+          if (available.length > 0) {
+            const flashModels = available.filter((m: string) => m.includes("flash"));
+            candidateModels = Array.from(new Set([...flashModels, ...available, ...candidateModels]));
+          }
+        }
+      }
+    } catch {}
+
     let lastError = "";
 
     for (const model of candidateModels) {

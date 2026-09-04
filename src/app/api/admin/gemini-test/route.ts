@@ -19,8 +19,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "กรุณาระบุ Gemini API Key" }, { status: 400 });
     }
 
-    // Try gemini-1.5-flash first (standard default in Google AI Studio)
-    const modelsToTest = ["gemini-1.5-flash", "gemini-2.0-flash"];
+    // Priority list with Google's recommended gemini-3.6-flash
+    let modelsToTest = [
+      "gemini-3.6-flash",
+      "gemini-2.5-flash",
+      "gemini-1.5-flash",
+      "gemini-2.0-flash"
+    ];
+
+    // Try to dynamically discover models supported by this API key
+    try {
+      const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+      const listRes = await fetch(listUrl, {
+        headers: { "x-goog-api-key": apiKey }
+      });
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        if (Array.isArray(listData.models)) {
+          const available = listData.models
+            .filter((m: any) => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes("generateContent"))
+            .map((m: any) => m.name.replace(/^models\//, ""));
+          if (available.length > 0) {
+            // Prioritize flash models
+            const flashModels = available.filter((m: string) => m.includes("flash"));
+            modelsToTest = Array.from(new Set([...flashModels, ...available, ...modelsToTest]));
+          }
+        }
+      }
+    } catch {}
+
     let lastError = "";
 
     for (const model of modelsToTest) {

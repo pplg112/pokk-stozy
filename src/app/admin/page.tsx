@@ -1161,7 +1161,7 @@ export default function AdminDashboardPage() {
 
             <div className="space-y-3.5 text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
               <p>
-                ใส่ <strong className="text-white">Gemini API Key</strong> เพื่อให้ระบบใช้โมเดล <strong className="text-green-400">Gemini 2.0 Flash</strong> ในการอ่านโค้ดสคริปต์อัตโนมัติ, เขียนคำอธิบายเชิงลึก, สรุปจุดเด่น และสร้าง Revert Script คืนค่าเดิมให้ทันทีเมื่อลากไฟล์ลงในกล่อง
+                ใส่ <strong className="text-white">Gemini API Key</strong> เพื่อให้ระบบใช้โมเดล <strong className="text-green-400">Google Gemini Flash</strong> (รองรับเวอร์ชันล่าสุด Gemini 3.6 Flash) ในการอ่านโค้ดสคริปต์อัตโนมัติ, เขียนคำอธิบายเชิงลึก, สรุปจุดเด่น และสร้าง Revert Script คืนค่าเดิมให้ทันทีเมื่อลากไฟล์ลงในกล่อง
               </p>
 
               <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/25 text-xs text-cyan-300 space-y-1.5 font-sans">
