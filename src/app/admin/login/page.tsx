@@ -64,7 +64,7 @@ export default function AdminLoginPage() {
                 <Lock className="w-5 h-5 absolute left-3.5 top-3.5 text-slate-500 pointer-events-none" />
                 <input
                   type="password"
-                  placeholder="กรอกรหัสผ่าน (เริ่มต้น: pokky2026)"
+                  placeholder="กรอกรหัสผ่านผู้ดูแลระบบ"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-green-400 transition-colors font-mono"
@@ -89,13 +89,6 @@ export default function AdminLoginPage() {
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-
-          <div className="mt-6 pt-5 border-t border-white/5 text-center text-xs text-slate-500 font-mono">
-            <span>รหัสผ่านเริ่มต้นคือ </span>
-            <code className="px-2 py-0.5 rounded bg-white/5 text-green-400 font-bold border border-white/10">
-              pokky2026
-            </code>
-          </div>
         </div>
 
         {/* Back Link */}

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "pokky2026";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "pgm2551dd";
 const COOKIE_NAME = "pokky_admin_token";
-const SECRET_TOKEN = "pokky_authenticated_admin_session_2026";
+const SECRET_TOKEN = "pokky_admin_session_pgm2551dd";
 
 export async function POST(request: NextRequest) {
   try {
