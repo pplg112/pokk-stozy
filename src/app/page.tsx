@@ -69,17 +69,25 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#08090d] text-slate-100 flex flex-col font-sans selection:bg-green-400 selection:text-slate-950">
+    <div className="min-h-screen bg-[#07080c] text-slate-100 flex flex-col font-sans selection:bg-green-400 selection:text-slate-950 relative overflow-x-hidden">
       
-      {/* Minimal Header */}
-      <Navbar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-      />
+      {/* Dynamic Cyber Grid & Neon Ambient Glow Background */}
+      <div className="fixed inset-0 bg-grid-cyber pointer-events-none opacity-30 z-0" />
+      <div className="fixed -top-40 left-1/2 -translate-x-1/2 w-[850px] h-[500px] bg-gradient-to-b from-green-500/15 via-emerald-500/10 to-transparent blur-[140px] pointer-events-none z-0" />
+      <div className="fixed top-1/3 -left-48 w-[500px] h-[500px] bg-gradient-to-r from-cyan-500/10 to-transparent blur-[150px] pointer-events-none z-0" />
+      <div className="fixed bottom-0 -right-48 w-[600px] h-[450px] bg-gradient-to-l from-emerald-500/10 via-green-500/5 to-transparent blur-[150px] pointer-events-none z-0" />
+
+      {/* Header */}
+      <div className="relative z-40">
+        <Navbar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
+      </div>
 
       {/* Main Content */}
-      <main className="flex-1">
-        {/* Clean Hero */}
+      <main className="flex-1 relative z-10">
+        {/* Vibrant Esports Hero */}
         <StoreHero />
         
         {/* Products Grid */}
@@ -91,12 +99,14 @@ export default function HomePage() {
           onSearchChange={setSearchQuery}
         />
         
-        {/* Minimal FAQ */}
+        {/* FAQ Section */}
         <FaqSection />
       </main>
 
-      {/* Minimal Footer */}
-      <Footer />
+      {/* Footer */}
+      <div className="relative z-10">
+        <Footer />
+      </div>
 
       {/* Product Detail Modal */}
       <ProductDetailModal

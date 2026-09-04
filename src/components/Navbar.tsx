@@ -44,21 +44,29 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Search className="w-4 h-4 absolute left-3.5 top-2.5 text-slate-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="ค้นหาไฟล์หรือสคริปต์แจกฟรี..."
+              placeholder="ค้นหาไฟล์แจกฟรี (เช่น Kernel, Timer, FPS, Latency)..."
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-xs sm:text-sm font-sans text-white placeholder-slate-400 focus:outline-none focus:border-green-400/80 focus:bg-white/[0.08] transition-all"
+              className="w-full pl-10 pr-4 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-xs sm:text-sm font-sans text-white placeholder-slate-400 focus:outline-none focus:border-green-400/80 focus:bg-white/[0.08] focus:shadow-[0_0_18px_rgba(74,222,128,0.18)] transition-all"
             />
           </div>
         </div>
 
         {/* Right Actions */}
         <div className="flex items-center gap-3 shrink-0">
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-xs font-mono text-emerald-300">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+            </span>
+            <span className="tracking-wide text-[11px] font-semibold">SERVER: ONLINE</span>
+          </div>
+
           <a
             href="https://discord.gg/eHa8MQu7mz"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2.5 px-3.5 sm:px-4.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-[#5865F2]/20 hover:bg-[#5865F2]/30 border border-[#5865F2]/40 hover:border-[#5865F2]/60 transition-all shadow-sm group"
+            className="inline-flex items-center gap-2.5 px-3.5 sm:px-4.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-[#5865F2]/25 hover:bg-[#5865F2]/40 border border-[#5865F2]/45 hover:border-[#5865F2]/75 transition-all shadow-md shadow-[#5865F2]/20 hover:shadow-[0_0_20px_rgba(88,101,242,0.4)] group hover:scale-[1.02]"
           >
             <img src="/discord-logo.png" alt="Discord" className="h-5 sm:h-5.5 w-auto object-contain group-hover:scale-110 transition-transform drop-shadow" />
             <span>Discord ชุมชน</span>

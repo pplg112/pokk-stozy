@@ -5,7 +5,18 @@ import { DIGITAL_PRODUCTS } from "@/data/products";
 import { DigitalProduct, ProductCategory } from "@/types";
 import { ProductCard } from "./ProductCard";
 import { AdBanner } from "./AdBanner";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Layers, 
+  Sparkles, 
+  Cpu, 
+  Zap, 
+  Wifi, 
+  Activity,
+  SlidersHorizontal,
+  FolderOpen
+} from "lucide-react";
 
 const ITEMS_PER_PAGE = 9;
 
@@ -56,12 +67,12 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   };
 
   const categories = [
-    { id: "all" as ProductCategory, label: "ทั้งหมด" },
-    { id: "bundles" as ProductCategory, label: "ชุดรวมครบวงจร" },
-    { id: "os-scripts" as ProductCategory, label: "สคริปต์ระบบ" },
-    { id: "gpu-profiles" as ProductCategory, label: "โปรไฟล์การ์ดจอ" },
-    { id: "network" as ProductCategory, label: "เน็ตเวิร์ก" },
-    { id: "memory-bios" as ProductCategory, label: "แรม & ไบออส" },
+    { id: "all" as ProductCategory, label: "ทั้งหมด", icon: Layers },
+    { id: "bundles" as ProductCategory, label: "ชุดรวมครบวงจร", icon: Sparkles },
+    { id: "os-scripts" as ProductCategory, label: "สคริปต์ระบบ", icon: Cpu },
+    { id: "gpu-profiles" as ProductCategory, label: "โปรไฟล์การ์ดจอ", icon: Zap },
+    { id: "network" as ProductCategory, label: "เน็ตเวิร์ก", icon: Wifi },
+    { id: "memory-bios" as ProductCategory, label: "แรม & ไบออส", icon: Activity },
   ];
 
   const filteredProducts = useMemo(() => {
@@ -103,17 +114,28 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
         <div className="flex flex-wrap items-center gap-2">
           {categories.map((cat) => {
             const isActive = selectedCategory === cat.id;
+            const Icon = cat.icon;
+            const count = cat.id === "all" 
+              ? productsList.length 
+              : productsList.filter(p => p.category === cat.id).length;
+
             return (
               <button
                 key={cat.id}
                 onClick={() => handleCategoryChange(cat.id)}
-                className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
                   isActive
-                    ? "bg-green-500/20 text-green-300 border-2 border-green-500/40 shadow-md shadow-green-500/15"
-                    : "bg-white/[0.04] text-slate-300 hover:text-white hover:bg-white/10 border border-white/10"
+                    ? "bg-green-500/20 text-green-300 border-2 border-green-400/80 shadow-[0_0_20px_rgba(74,222,128,0.25)]"
+                    : "bg-white/[0.04] text-slate-300 hover:text-white hover:bg-white/[0.08] border border-white/10 hover:border-white/20"
                 }`}
               >
-                {cat.label}
+                <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isActive ? "text-green-400" : "text-slate-400"}`} />
+                <span>{cat.label}</span>
+                <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
+                  isActive ? "bg-green-400/20 text-green-300" : "bg-white/5 text-slate-400"
+                }`}>
+                  {count}
+                </span>
               </button>
             );
           })}
@@ -121,11 +143,14 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
 
         {/* Sort Controls */}
         <div className="flex items-center gap-2.5 self-end lg:self-center shrink-0">
-          <span className="text-xs sm:text-sm text-slate-400 font-medium">เรียงตาม:</span>
+          <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-400 font-medium">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
+            <span>เรียงตาม:</span>
+          </div>
           <select
             value={sortBy}
             onChange={(e) => handleSortChange(e.target.value as any)}
-            className="px-3 py-2 rounded-xl bg-white/[0.06] border border-white/15 text-xs sm:text-sm text-white focus:outline-none focus:border-green-400 font-sans cursor-pointer"
+            className="px-3.5 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/15 focus:border-green-400 focus:shadow-[0_0_15px_rgba(74,222,128,0.2)] text-xs sm:text-sm text-white focus:outline-none font-sans cursor-pointer transition-all"
           >
             <option value="popular" className="bg-[#11131a] text-white">ยอดดาวน์โหลดสูงสุด</option>
             <option value="rating" className="bg-[#11131a] text-white">เรตติ้งคะแนนรีวิว</option>
