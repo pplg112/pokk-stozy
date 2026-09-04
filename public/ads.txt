@@ -1,0 +1,8 @@
+# ==========================================
+# POKKY OPTIMIZE - ADS.TXT CONFIGURATION
+# ==========================================
+# Google AdSense
+google.com, pub-1057391684109886, DIRECT, f08c47fec0942fa0
+
+# Adsterra
+# adsterra.com, xxxxx, DIRECT
