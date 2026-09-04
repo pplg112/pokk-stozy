@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { RealProduct } from "@/data/realProducts";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import { 
   Plus, 
   Trash2, 
@@ -459,6 +460,15 @@ export default function AdminDashboardPage() {
       showAlert("ไม่สามารถเปลี่ยนสถานะได้", "เกิดข้อผิดพลาด");
     }
   };
+
+  if (loading && products.length === 0) {
+    return (
+      <LoadingScreen
+        message="กำลังตรวจสอบสิทธิ์และโหลดข้อมูลแดชบอร์ด..."
+        subMessage="ADMINISTRATION CONSOLE"
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#08090d] text-slate-100 font-sans pb-20">

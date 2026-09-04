@@ -22,21 +22,87 @@ function fallbackAnalyzeCode(filename: string, content: string): AnalysisResult 
   const lower = (content + " " + filename).toLowerCase();
   
   let category: AnalysisResult["category"] = "os-scripts";
-  if (lower.includes("nvidia") || lower.includes("amd") || lower.includes("gpu") || lower.includes("graphics")) {
-    category = "gpu-profiles";
-  } else if (lower.includes("netsh") || lower.includes("tcp") || lower.includes("nagle") || lower.includes("ping") || lower.includes("network") || lower.includes("dns")) {
-    category = "network";
-  } else if (lower.includes("ram") || lower.includes("memory") || lower.includes("bios") || lower.includes("bcache") || lower.includes("paging")) {
-    category = "memory-bios";
-  } else if (lower.includes("all-in-one") || lower.includes("bundle") || lower.includes("aio") || lower.includes("ultimate") || lower.includes("suite")) {
-    category = "bundles";
-  }
-
-  // Format clean base name from filename
   const cleanName = filename
     .replace(/\.[^/.]+$/, "")
     .replace(/[_-]/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
+  let name = cleanName;
+  let tagline = "";
+  let description = "";
+  let features = [
+    "ปรับแต่งการทำงานของระบบ Windows",
+    "ช่วยลดภาระการทำงานที่ไม่จำเป็น",
+    "มีคำสั่ง Revert คืนค่าเดิมได้"
+  ];
+
+  if (lower.includes("gpedit") || lower.includes("grouppolicy")) {
+    category = "os-scripts";
+    name = "เปิดใช้งาน Group Policy Editor (gpedit.msc)";
+    tagline = "สคริปต์เปิดใช้งาน gpedit.msc สำหรับ Windows Home Edition";
+    description = `สคริปต์ ${filename} สำหรับติดตั้งและเปิดใช้งาน Group Policy Editor (gpedit.msc) บนระบบ Windows Home Edition โดยดึงแพ็กเกจมาตรฐานของ Windows ช่วยให้สามารถตั้งค่านโยบายระบบและปิดฟังก์ชันที่ไม่ต้องการได้`;
+    features = [
+      "เปิดใช้งาน Group Policy ใน Windows 10/11 Home Edition",
+      "ติดตั้งผ่านชุด DISM Package แท้ของระบบ",
+      "ไม่ต้องติดตั้งโปรแกรมแปลกปลอมภายนอก",
+      "เข้าใช้งานผ่านคำสั่ง gpedit.msc ได้ทันที"
+    ];
+  } else if (lower.includes("clean") || lower.includes("temp") || lower.includes("junk") || lower.includes("disk")) {
+    category = "os-scripts";
+    name = name || "Windows Deep Clean & Disk Optimizer";
+    tagline = "สคริปต์ล้างไฟล์ขยะ แคชระบบชั่วคราว และคืนพื้นที่ว่างในดิสก์";
+    description = `สคริปต์ ${filename} ช่วยล้างไฟล์ชั่วคราว (Temp files), Windows Update Cache, Prefetch และไฟล์ตกค้างในระบบ เพื่อเพิ่มพื้นที่ว่างและลดภาระการอ่านเขียนของฮาร์ดดิสก์/SSD`;
+    features = [
+      "ลบไฟล์ Temporary และขยะในระบบอย่างปลอดภัย",
+      "ล้างแคช Windows Update ที่ตกค้าง",
+      "ช่วยคืนพื้นที่ว่างบนไดรฟ์ C:",
+      "เพิ่มความเร็วในการอ่านเขียนข้อมูล"
+    ];
+  } else if (lower.includes("nvidia") || lower.includes("amd") || lower.includes("gpu") || lower.includes("graphics")) {
+    category = "gpu-profiles";
+    name = name || "GPU Performance & Frame Stability Profile";
+    tagline = "ปรับแต่งการทำงานของไดรเวอร์การ์ดจอ เพิ่มความลื่นไหลของภาพ";
+    description = `สคริปต์ ${filename} ปรับแต่งค่า Registry และพารามิเตอร์ของระบบกราฟิก ช่วยลดอาการกระตุกของภาพ และเพิ่มความสม่ำเสมอของ Frametime`;
+    features = [
+      "ปรับแต่งการตอบสนองของไดรเวอร์กราฟิก",
+      "ลดอาการ Micro-stutter และ Frame Drop",
+      "เพิ่มความลื่นไหลในการแสดงผลเกม"
+    ];
+  } else if (lower.includes("netsh") || lower.includes("tcp") || lower.includes("nagle") || lower.includes("ping") || lower.includes("network") || lower.includes("dns")) {
+    category = "network";
+    name = name || "Network Latency & TCP Gaming Optimizer";
+    tagline = "ปรับแต่งระบบเน็ตเวิร์ก ลด Ping และค่า Packet Delay";
+    description = `สคริปต์ ${filename} ปรับตั้งค่าโปรโตคอล TCP/IP, ปิด Nagle's Algorithm และจัดการ Buffer เครือข่ายเพื่อเพิ่มความเร็วในการส่งข้อมูลในเกมออนไลน์`;
+    features = [
+      "ลด Ping และความแกว่งของสัญญาณ",
+      "ปิด Nagle's Algorithm เพื่อส่งข้อมูลทันที",
+      "เพิ่มความเสถียรในการเชื่อมต่อเกมออนไลน์"
+    ];
+  } else if (lower.includes("ram") || lower.includes("memory") || lower.includes("bios") || lower.includes("bcache") || lower.includes("paging")) {
+    category = "memory-bios";
+    name = name || "Memory Management & Cache Optimization";
+    tagline = "ปรับแต่งการจัดการหน่วยความจำ RAM และแคชระบบ";
+    description = `สคริปต์ ${filename} ช่วยจัดสรรหน่วยความจำ RAM ให้กับแอปพลิเคชันและเกมที่กำลังรันอยู่ ลดการเขียนไฟล์ Swap ลงบนดิสก์โดยไม่จำเป็น`;
+    features = [
+      "จัดสรร RAM ให้ความสำคัญกับแอปพลิเคชันหลัก",
+      "ล้าง Standby Memory อัตโนมัติ",
+      "ลดปัญหาเกมกระตุกจาก RAM ไม่พอ"
+    ];
+  } else if (lower.includes("all-in-one") || lower.includes("bundle") || lower.includes("aio") || lower.includes("ultimate") || lower.includes("suite")) {
+    category = "bundles";
+    name = name || "All-in-One Windows Gaming Optimization Suite";
+    tagline = "ชุดรวมสคริปต์ปรับแต่งระบบแบบครบวงจร";
+    description = `สคริปต์ ${filename} รวมการปรับแต่งทั้งระบบ ทั้ง CPU, Services แฝง และการตอบสนองของอินพุต`;
+    features = [
+      "ปรับแต่งระบบแบบครบวงจรในไฟล์เดียว",
+      "ปิด Service แฝงที่ไม่จำเป็น",
+      "ลด Input Delay ของระบบ",
+      "มีคำสั่ง Revert คืนค่าเริ่มต้นได้"
+    ];
+  } else {
+    // Clean default for any generic script - no annoying duplicate esports text
+    tagline = `สคริปต์ ${cleanName} สำหรับปรับแต่งระบบ Windows`;
+    description = `สคริปต์ ${filename} สำหรับการปรับแต่งและตั้งค่าระบบ Windows เพื่อเพิ่มประสิทธิภาพและความเสถียรในการใช้งาน`;
+  }
 
   // Generate Revert Script heuristic
   let revertCommands = [
@@ -58,17 +124,12 @@ function fallbackAnalyzeCode(filename: string, content: string): AnalysisResult 
   revertCommands.push("pause");
 
   return {
-    name: cleanName || "Windows Gaming Optimizer Suite",
+    name: name || cleanName || "Windows Optimizer Script",
     category,
-    tagline: "สคริปต์ปรับแต่งประสิทธิภาพระบบ ปิด Service แฝง และลด Latency เพื่อความนิ่งของเกม",
-    description: `สคริปต์ ${filename} ออกแบบมาเพื่อปรับแต่งระบบ Windows สำหรับการเล่นเกมระดับ Esports โดยเฉพาะ ช่วยลดการทำงานของ Process แฝงใน Background, จัดสรรทรัพยากรฮาร์ดแวร์ให้ตัวเกมมีความสำคัญสูงสุด และเพิ่มความนิ่งของ Frametime (1% Low FPS)`,
+    tagline,
+    description,
     compatibility: "Windows 10 / 11 (64-bit ทุกเวอร์ชัน)",
-    features: [
-      "ลด Input Delay ของเมาส์และคีย์บอร์ด",
-      "ปรับแต่งการจัดสรร Thread ของ CPU ให้เกมหลัก",
-      "ปิดการส่งข้อมูล Telemetry ที่ไม่จำเป็นของระบบ",
-      "มีสคริปต์ Revert คืนค่าเดิมได้ตลอดเวลา"
-    ],
+    features,
     requirements: [
       "รันไฟล์ด้วยสิทธิ์ผู้ดูแลระบบ (Run as Administrator)",
       "แนะนำให้สร้าง System Restore Point ก่อนเริ่มรัน"

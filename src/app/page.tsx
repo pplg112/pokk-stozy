@@ -9,6 +9,7 @@ import { FreeDownloadModal } from "@/components/FreeDownloadModal";
 import { FaqSection } from "@/components/FaqSection";
 import { Footer } from "@/components/Footer";
 import { CyberBackground } from "@/components/CyberBackground";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import { DIGITAL_PRODUCTS } from "@/data/products";
 import { DigitalProduct, DownloadRecord } from "@/types";
 
@@ -17,16 +18,31 @@ export default function HomePage() {
   const [selectedProduct, setSelectedProduct] = useState<DigitalProduct | null>(null);
   const [downloadingProduct, setDownloadingProduct] = useState<DigitalProduct | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFadingOut, setIsFadingOut] = useState(false);
 
-  const refreshProducts = () => {
-    fetch("/api/products", { cache: "no-store" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && Array.isArray(data.products) && data.products.length > 0) {
-          setProductsList(data.products);
-        }
-      })
-      .catch(() => {});
+  const refreshProducts = async () => {
+    const startTime = Date.now();
+    try {
+      const res = await fetch("/api/products", { cache: "no-store" });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.products) && data.products.length > 0) {
+        setProductsList(data.products);
+      }
+    } catch {
+      // Retain existing products on network error
+    } finally {
+      const elapsed = Date.now() - startTime;
+      const minDuration = 650;
+      const delay = Math.max(0, minDuration - elapsed);
+
+      setTimeout(() => {
+        setIsFadingOut(true);
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 500);
+      }, delay);
+    }
   };
 
   useEffect(() => {
@@ -121,6 +137,14 @@ export default function HomePage() {
         product={downloadingProduct}
         onDownloadComplete={handleDownloadComplete}
       />
+
+      {/* Cyber Esports Loading Screen */}
+      {isLoading && (
+        <LoadingScreen
+          isFadingOut={isFadingOut}
+          subMessage="ESPORTS SYSTEM OPTIMIZER"
+        />
+      )}
 
     </div>
   );
