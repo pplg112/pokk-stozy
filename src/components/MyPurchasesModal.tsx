@@ -28,11 +28,12 @@ export const MyPurchasesModal: React.FC<MyPurchasesModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const handleClear = () => {
-    if (confirm("ต้องการล้างประวัติการดาวน์โหลดบนอุปกรณ์นี้ใช่หรือไม่?")) {
-      clearStoredDownloads();
-      if (onClearHistory) onClearHistory();
-    }
+  const [showConfirmClear, setShowConfirmClear] = React.useState(false);
+
+  const handleConfirmClear = () => {
+    clearStoredDownloads();
+    if (onClearHistory) onClearHistory();
+    setShowConfirmClear(false);
   };
 
   return (
@@ -127,19 +128,37 @@ export const MyPurchasesModal: React.FC<MyPurchasesModalProps> = ({
         {/* Modal Footer */}
         <div className="p-4 px-6 border-t border-white/10 bg-white/[0.02] flex items-center justify-between text-xs font-mono text-slate-400">
           {purchases.length > 0 ? (
-            <button
-              onClick={handleClear}
-              className="flex items-center gap-1.5 text-red-400 hover:text-red-300 transition-colors"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>ล้างประวัติ</span>
-            </button>
+            showConfirmClear ? (
+              <div className="flex items-center gap-2">
+                <span className="text-red-400 font-sans text-xs">ยืนยันล้างประวัติ?</span>
+                <button
+                  onClick={handleConfirmClear}
+                  className="px-2.5 py-1 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 border border-red-500/40 transition-colors cursor-pointer font-sans text-xs font-semibold"
+                >
+                  ล้างทันที
+                </button>
+                <button
+                  onClick={() => setShowConfirmClear(false)}
+                  className="px-2.5 py-1 rounded bg-white/5 text-slate-400 hover:text-white transition-colors cursor-pointer font-sans text-xs"
+                >
+                  ยกเลิก
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowConfirmClear(true)}
+                className="flex items-center gap-1.5 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>ล้างประวัติ</span>
+              </button>
+            )
           ) : (
             <span>ไฟล์ทั้งหมดแจกฟรี ไม่มีค่าใช้จ่าย</span>
           )}
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg border border-white/10 text-slate-300 hover:text-white transition-colors"
+            className="px-4 py-1.5 rounded-lg border border-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
           >
             ปิด
           </button>

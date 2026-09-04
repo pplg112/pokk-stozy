@@ -20,6 +20,7 @@ import {
   Sparkles, 
   Terminal, 
   AlertCircle,
+  AlertTriangle,
   X,
   Loader2,
   Bot,
@@ -62,6 +63,33 @@ export default function AdminDashboardPage() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Custom Confirmation & Alert Modal State (Replacing native browser confirm/alert)
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    id: string;
+    name: string;
+    isDeleting: boolean;
+  }>({
+    isOpen: false,
+    id: "",
+    name: "",
+    isDeleting: false,
+  });
+
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+  });
+
+  const showAlert = (message: string, title = "แจ้งเตือนระบบ") => {
+    setAlertModal({ isOpen: true, title, message });
+  };
 
   // Form State
   const [formData, setFormData] = useState({
@@ -185,7 +213,7 @@ export default function AdminDashboardPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      alert("กรุณาเลือกไฟล์รูปภาพเท่านั้น (.png, .jpg, .webp)");
+      showAlert("กรุณาเลือกไฟล์รูปภาพเท่านั้น (.png, .jpg, .webp)", "รูปแบบไฟล์ไม่ถูกต้อง");
       return;
     }
     const reader = new FileReader();
@@ -220,7 +248,7 @@ export default function AdminDashboardPage() {
       const uploadData = await uploadRes.json();
 
       if (!uploadData.success) {
-        alert(uploadData.error || "ไม่สามารถอ่านไฟล์ได้");
+        showAlert(uploadData.error || "ไม่สามารถอ่านไฟล์ได้", "อัปโหลดไม่สำเร็จ");
         return;
       }
 
@@ -283,7 +311,7 @@ export default function AdminDashboardPage() {
       }
     } catch (err) {
       console.error(err);
-      alert("เกิดข้อผิดพลาดในการประมวลผลด้วย AI");
+      showAlert("เกิดข้อผิดพลาดในการประมวลผลด้วย AI", "ระบบขัดข้อง");
     } finally {
       setUploading(false);
       setIsAnalyzing(false);
@@ -301,7 +329,7 @@ export default function AdminDashboardPage() {
   // Re-analyze existing code in Text Editor with Gemini AI
   const handleTriggerAiAnalysis = async () => {
     if (!formData.scriptContent) {
-      alert("กรุณาใส่โค้ดสคริปต์ก่อนให้ AI วิเคราะห์");
+      showAlert("กรุณาใส่โค้ดสคริปต์ก่อนให้ AI วิเคราะห์", "ไม่พบโค้ดสคริปต์");
       return;
     }
 
@@ -344,7 +372,7 @@ export default function AdminDashboardPage() {
         setTimeout(() => setMessage(""), 5000);
       }
     } catch (err) {
-      alert("ไม่สามารถวิเคราะห์ด้วย AI ได้");
+      showAlert("ไม่สามารถวิเคราะห์ด้วย AI ได้", "ระบบวิเคราะห์ขัดข้อง");
     } finally {
       setIsAnalyzing(false);
       setAiStatusMessage("");
@@ -374,32 +402,47 @@ export default function AdminDashboardPage() {
         setTimeout(() => setMessage(""), 4000);
         await loadData();
       } else {
-        alert(data.error || "ไม่สามารถบันทึกได้");
+        showAlert(data.error || "ไม่สามารถบันทึกได้", "บันทึกไม่สำเร็จ");
       }
     } catch {
-      alert("เกิดข้อผิดพลาดในการบันทึก");
+      showAlert("เกิดข้อผิดพลาดในการบันทึก", "ระบบขัดข้อง");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteProduct = async (id: string, name: string) => {
-    if (!confirm(`คุณต้องการลบแพ็กเกจ "${name}" ใช่หรือไม่?`)) return;
+  const promptDeleteProduct = (id: string, name: string) => {
+    setDeleteModal({
+      isOpen: true,
+      id,
+      name,
+      isDeleting: false,
+    });
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!deleteModal.id) return;
+    setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
 
     try {
-      const res = await fetch(`/api/admin/products/${id}`, {
+      const res = await fetch(`/api/admin/products/${deleteModal.id}`, {
         method: "DELETE",
         credentials: "include",
         headers: getAuthHeaders(),
       });
       const data = await res.json();
       if (data.success) {
-        setMessage(`ลบแพ็กเกจ "${name}" เรียบร้อย`);
+        setMessage(`ลบแพ็กเกจ "${deleteModal.name}" ออกจากระบบเรียบร้อย`);
         setTimeout(() => setMessage(""), 4000);
+        setDeleteModal({ isOpen: false, id: "", name: "", isDeleting: false });
         await loadData();
+      } else {
+        showAlert(data.error || "ไม่สามารถลบแพ็กเกจได้", "เกิดข้อผิดพลาด");
+        setDeleteModal((prev) => ({ ...prev, isDeleting: false }));
       }
     } catch {
-      alert("ไม่สามารถลบแพ็กเกจได้");
+      showAlert("ไม่สามารถเชื่อมต่อเพื่อลบแพ็กเกจได้", "เกิดข้อผิดพลาด");
+      setDeleteModal((prev) => ({ ...prev, isDeleting: false }));
     }
   };
 
@@ -413,7 +456,7 @@ export default function AdminDashboardPage() {
       });
       await loadData();
     } catch {
-      alert("ไม่สามารถเปลี่ยนสถานะได้");
+      showAlert("ไม่สามารถเปลี่ยนสถานะได้", "เกิดข้อผิดพลาด");
     }
   };
 
@@ -631,7 +674,7 @@ export default function AdminDashboardPage() {
                           <Edit3 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteProduct(prod.id, prod.name)}
+                          onClick={() => promptDeleteProduct(prod.id, prod.name)}
                           title="ลบแพ็กเกจนี้"
                           className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
                         >
@@ -1121,6 +1164,127 @@ export default function AdminDashboardPage() {
               >
                 บันทึกคีย์
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Esports Cyber Delete Confirmation Modal */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 font-sans">
+          <div className="relative w-full max-w-md rounded-2xl bg-[#0c0e17] border border-red-500/40 p-6 shadow-[0_0_50px_rgba(239,68,68,0.25)] text-left overflow-hidden">
+            {/* Top red danger bar */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-rose-500 to-amber-500" />
+            
+            {/* Corner ambient glow */}
+            <div className="absolute -top-16 -right-16 w-36 h-36 bg-red-600/15 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10">
+              {/* Header Icon */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 shadow-inner">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <button
+                  onClick={() => !deleteModal.isDeleting && setDeleteModal({ isOpen: false, id: "", name: "", isDeleting: false })}
+                  disabled={deleteModal.isDeleting}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Title & Desc */}
+              <h3 className="text-lg sm:text-xl font-bold text-white mb-2 tracking-tight">
+                ยืนยันการลบแพ็กเกจ
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 mb-4 leading-relaxed">
+                คุณแน่ใจหรือไม่ว่าต้องการลบแพ็กเกจนี้ออกจากระบบ?
+              </p>
+
+              {/* Package Card Highlight */}
+              <div className="p-3.5 rounded-xl bg-white/[0.03] border border-red-500/20 mb-5">
+                <div className="flex items-start gap-2.5">
+                  <FileCode2 className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <div className="text-sm font-bold text-white leading-snug">
+                      {deleteModal.name}
+                    </div>
+                    <div className="text-[11px] text-red-300/80 font-mono">
+                      ข้อมูลในฐานข้อมูล Supabase จะถูกลบออกถาวรทันที
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteModal({ isOpen: false, id: "", name: "", isDeleting: false })}
+                  disabled={deleteModal.isDeleting}
+                  className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-300 hover:text-white bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 transition-all cursor-pointer"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteProduct}
+                  disabled={deleteModal.isDeleting}
+                  className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-red-600 via-red-500 to-rose-600 hover:from-red-500 hover:to-rose-500 shadow-lg shadow-red-600/30 hover:shadow-red-600/50 transition-all flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+                >
+                  {deleteModal.isDeleting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>กำลังลบ...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      <span>ลบแพ็กเกจทันที</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Esports Cyber Alert Modal */}
+      {alertModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 font-sans">
+          <div className="relative w-full max-w-md rounded-2xl bg-[#0c0e17] border border-cyan-500/30 p-6 shadow-[0_0_40px_rgba(6,182,212,0.2)] text-left overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-green-400 to-emerald-400" />
+            
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-11 h-11 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <button
+                  onClick={() => setAlertModal({ isOpen: false, title: "", message: "" })}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <h3 className="text-base sm:text-lg font-bold text-white mb-2">
+                {alertModal.title}
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 mb-6 leading-relaxed">
+                {alertModal.message}
+              </p>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setAlertModal({ isOpen: false, title: "", message: "" })}
+                  className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-mono font-bold text-slate-950 bg-gradient-to-r from-green-400 to-emerald-400 hover:from-green-300 hover:to-emerald-300 transition-all shadow-md shadow-green-500/20 cursor-pointer"
+                >
+                  รับทราบ
+                </button>
+              </div>
             </div>
           </div>
         </div>
