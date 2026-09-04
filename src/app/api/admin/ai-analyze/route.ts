@@ -163,8 +163,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { filename, content, userApiKey } = body;
-    reqFilename = filename || "script.bat";
-    reqContent = content || "";
+    reqFilename = (filename || "script.bat").replace(/\0/g, "");
+    reqContent = (content || "").replace(/\0/g, "");
 
     if (!content && !filename) {
       return NextResponse.json({ success: false, error: "Missing filename or content" }, { status: 400 });
@@ -235,7 +235,14 @@ Do NOT wrap in markdown fences other than raw JSON or json block. Respond ONLY w
         const listData = await listRes.json();
         if (Array.isArray(listData.models)) {
           const available = listData.models
-            .filter((m: any) => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes("generateContent"))
+            .filter((m: any) => 
+              Array.isArray(m.supportedGenerationMethods) && 
+              m.supportedGenerationMethods.includes("generateContent") &&
+              !m.name.includes("tts") &&
+              !m.name.includes("audio") &&
+              !m.name.includes("image") &&
+              !m.name.includes("embedding")
+            )
             .map((m: any) => m.name.replace(/^models\//, ""));
           if (available.length > 0) {
             const flashModels = available.filter((m: string) => m.includes("flash"));

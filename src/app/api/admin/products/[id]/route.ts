@@ -25,8 +25,9 @@ export async function PUT(
     }
 
     return NextResponse.json({ success: true, product: updated });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Update failed" }, { status: 500 });
+  } catch (error: any) {
+    console.error("PUT /api/admin/products/[id] error:", error);
+    return NextResponse.json({ success: false, error: error?.message || "Update failed" }, { status: 500 });
   }
 }
 
@@ -47,7 +48,8 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true, message: "Deleted successfully" });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Delete failed" }, { status: 500 });
+  } catch (error: any) {
+    console.error("DELETE /api/admin/products/[id] error:", error);
+    return NextResponse.json({ success: false, error: error?.message || "Delete failed" }, { status: 500 });
   }
 }

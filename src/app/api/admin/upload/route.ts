@@ -30,8 +30,27 @@ export async function POST(request: NextRequest) {
     const extension = filename.split(".").pop()?.toUpperCase() || "BAT";
     const fileFormat = `.${extension}`;
 
-    // Read content as text for scripts
-    const textContent = await file.text();
+    // Read content as buffer to detect encoding (UTF-16LE / UTF-16BE / UTF-8)
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    let textContent = "";
+    if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
+      // UTF-16 LE with BOM
+      textContent = buffer.subarray(2).toString("utf16le");
+    } else if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
+      // UTF-16 BE with BOM
+      textContent = new TextDecoder("utf-16be").decode(buffer.subarray(2));
+    } else if (buffer.length >= 4 && buffer[1] === 0 && buffer[3] === 0) {
+      // UTF-16 LE without BOM (common in Windows batch scripts)
+      textContent = buffer.toString("utf16le");
+    } else {
+      // Standard UTF-8
+      textContent = buffer.toString("utf-8");
+    }
+
+    // Always strip null bytes to prevent PostgreSQL 22P05 error
+    textContent = textContent.replace(/\0/g, "");
 
     const fileId = `file-${Date.now()}`;
     db.saveUploadedBlob(fileId, filename, textContent);

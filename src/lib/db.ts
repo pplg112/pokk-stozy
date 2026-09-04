@@ -119,6 +119,16 @@ function calculateProductRating(productId: string, reviews: Review[]) {
   return { rating, reviewCount };
 }
 
+function sanitizeString(val: string | undefined | null): string {
+  if (!val) return "";
+  return val.replace(/\0/g, "").trim();
+}
+
+function sanitizeCode(val: string | undefined | null): string {
+  if (!val) return "";
+  return val.replace(/\0/g, "");
+}
+
 export const db = {
   async getProducts(activeOnly = true): Promise<RealProduct[]> {
     const supabase = getSupabase();
@@ -185,44 +195,48 @@ export const db = {
     const id = data.id || `pokky-${Date.now()}`;
     const newProd: RealProduct = {
       id,
-      name: data.name,
-      tagline: data.tagline || "สคริปต์ปรับแต่งประสิทธิภาพเกมเมอร์ระดับ Esports",
-      description: data.description || "สคริปต์ปรับแต่งคอมพิวเตอร์เพื่อความเสถียรและเฟรมเรตสูงสุด",
-      imageUrl: data.imageUrl,
+      name: sanitizeString(data.name),
+      tagline: sanitizeString(data.tagline || "สคริปต์ปรับแต่งประสิทธิภาพเกมเมอร์ระดับ Esports"),
+      description: sanitizeString(data.description || "สคริปต์ปรับแต่งคอมพิวเตอร์เพื่อความเสถียรและเฟรมเรตสูงสุด"),
+      imageUrl: data.imageUrl ? sanitizeString(data.imageUrl) : undefined,
       category: data.category,
-      fileFormat: data.fileFormat || ".BAT",
-      fileSize: data.fileSize || "50 KB",
-      version: data.version || "v1.0.0",
-      compatibility: data.compatibility || "Windows 10 / 11 (64-bit)",
+      fileFormat: sanitizeString(data.fileFormat || ".BAT"),
+      fileSize: sanitizeString(data.fileSize || "50 KB"),
+      version: sanitizeString(data.version || "v1.0.0"),
+      compatibility: sanitizeString(data.compatibility || "Windows 10 / 11 (64-bit)"),
       downloadsCount: data.downloadsCount || 0,
       rating: 0,
       reviewCount: 0,
       popular: data.popular ?? false,
       active: data.active ?? true,
-      features: data.features || ["ปรับแต่งระบบอัตโนมัติ", "ปลอดภัย มีไฟล์ Revert ในตัว"],
-      requirements: data.requirements || ["Windows 10 หรือ 11 (64-bit)", "สิทธิ์ Administrator"],
-      includedFiles: data.includedFiles || [
+      features: (data.features || ["ปรับแต่งระบบอัตโนมัติ", "ปลอดภัย มีไฟล์ Revert ในตัว"]).map(sanitizeString),
+      requirements: (data.requirements || ["Windows 10 หรือ 11 (64-bit)", "สิทธิ์ Administrator"]).map(sanitizeString),
+      includedFiles: (data.includedFiles || [
         { filename: `${id}.bat`, description: "ไฟล์สคริปต์ปรับแต่งหลัก" },
         { filename: `REVERT_${id}.bat`, description: "สคริปต์กู้คืนค่ามาตรฐานเดิม" }
-      ],
-      scriptContent: data.scriptContent || `@echo off\ntitle ${data.name}\necho [POKKY OPTIMIZE] กำลังดำเนินการปรับแต่ง...\npause`,
-      revertScript: data.revertScript || `@echo off\ntitle Revert - ${data.name}\necho คืนค่าเดิมของระบบเรียบร้อย\npause`,
+      ]).map(f => ({
+        filename: sanitizeString(f.filename),
+        description: sanitizeString(f.description)
+      })),
+      scriptContent: sanitizeCode(data.scriptContent || `@echo off\ntitle ${data.name}\necho [POKKY OPTIMIZE] กำลังดำเนินการปรับแต่ง...\npause`),
+      revertScript: sanitizeCode(data.revertScript || `@echo off\ntitle Revert - ${data.name}\necho คืนค่าเดิมของระบบเรียบร้อย\npause`),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
     const supabase = getSupabase();
     if (supabase) {
-      try {
-        const { data: inserted, error } = await supabase.from("products").insert(newProd).select().single();
-        if (!error && inserted) {
-          return inserted as RealProduct;
-        }
-        if (error) {
-          console.error("Supabase insert product error:", error);
-        }
-      } catch (e) {
-        console.error("Supabase createProduct error, using fallback:", e);
+      const { data: inserted, error } = await supabase.from("products").insert(newProd).select().single();
+      if (error) {
+        console.error("Supabase insert product error:", error);
+        throw new Error(`ไม่สามารถบันทึกลงฐานข้อมูล Supabase ได้: ${error.message || error.details || error.code}`);
+      }
+      if (inserted) {
+        // Also update local cache for consistency
+        const products = ensureDbFile();
+        products.unshift(inserted as RealProduct);
+        persistDb(products);
+        return inserted as RealProduct;
       }
     }
 
@@ -233,26 +247,48 @@ export const db = {
   },
 
   async updateProduct(id: string, updates: Partial<RealProduct>): Promise<RealProduct | null> {
+    const sanitizedUpdates: Partial<RealProduct> = { ...updates };
+    if (sanitizedUpdates.name !== undefined) sanitizedUpdates.name = sanitizeString(sanitizedUpdates.name);
+    if (sanitizedUpdates.tagline !== undefined) sanitizedUpdates.tagline = sanitizeString(sanitizedUpdates.tagline);
+    if (sanitizedUpdates.description !== undefined) sanitizedUpdates.description = sanitizeString(sanitizedUpdates.description);
+    if (sanitizedUpdates.compatibility !== undefined) sanitizedUpdates.compatibility = sanitizeString(sanitizedUpdates.compatibility);
+    if (sanitizedUpdates.fileFormat !== undefined) sanitizedUpdates.fileFormat = sanitizeString(sanitizedUpdates.fileFormat);
+    if (sanitizedUpdates.fileSize !== undefined) sanitizedUpdates.fileSize = sanitizeString(sanitizedUpdates.fileSize);
+    if (sanitizedUpdates.version !== undefined) sanitizedUpdates.version = sanitizeString(sanitizedUpdates.version);
+    if (sanitizedUpdates.scriptContent !== undefined) sanitizedUpdates.scriptContent = sanitizeCode(sanitizedUpdates.scriptContent);
+    if (sanitizedUpdates.revertScript !== undefined) sanitizedUpdates.revertScript = sanitizeCode(sanitizedUpdates.revertScript);
+    if (sanitizedUpdates.features) sanitizedUpdates.features = sanitizedUpdates.features.map(sanitizeString);
+    if (sanitizedUpdates.requirements) sanitizedUpdates.requirements = sanitizedUpdates.requirements.map(sanitizeString);
+    if (sanitizedUpdates.includedFiles) {
+      sanitizedUpdates.includedFiles = sanitizedUpdates.includedFiles.map(f => ({
+        filename: sanitizeString(f.filename),
+        description: sanitizeString(f.description)
+      }));
+    }
+
     const supabase = getSupabase();
     if (supabase) {
-      try {
-        const { data: updated, error } = await supabase
-          .from("products")
-          .update({
-            ...updates,
-            updatedAt: new Date().toISOString(),
-          })
-          .eq("id", id)
-          .select()
-          .single();
-        if (!error && updated) {
-          return updated as RealProduct;
+      const { data: updated, error } = await supabase
+        .from("products")
+        .update({
+          ...sanitizedUpdates,
+          updatedAt: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) {
+        console.error("Supabase update product error:", error);
+        throw new Error(`ไม่สามารถอัปเดตข้อมูลบน Supabase ได้: ${error.message || error.details || error.code}`);
+      }
+      if (updated) {
+        const products = ensureDbFile();
+        const idx = products.findIndex((p) => p.id === id);
+        if (idx !== -1) {
+          products[idx] = updated as RealProduct;
+          persistDb(products);
         }
-        if (error) {
-          console.error("Supabase update product error:", error);
-        }
-      } catch (e) {
-        console.error("Supabase updateProduct error, using fallback:", e);
+        return updated as RealProduct;
       }
     }
 
@@ -262,7 +298,7 @@ export const db = {
 
     products[idx] = {
       ...products[idx],
-      ...updates,
+      ...sanitizedUpdates,
       updatedAt: new Date().toISOString(),
     };
     persistDb(products);
@@ -272,17 +308,15 @@ export const db = {
   async deleteProduct(id: string): Promise<boolean> {
     const supabase = getSupabase();
     if (supabase) {
-      try {
-        const { error } = await supabase.from("products").delete().eq("id", id);
-        if (!error) {
-          return true;
-        }
-        if (error) {
-          console.error("Supabase delete product error:", error);
-        }
-      } catch (e) {
-        console.error("Supabase deleteProduct error, using fallback:", e);
+      const { error } = await supabase.from("products").delete().eq("id", id);
+      if (error) {
+        console.error("Supabase delete product error:", error);
+        throw new Error(`ไม่สามารถลบข้อมูลบน Supabase ได้: ${error.message || error.details || error.code}`);
       }
+      const products = ensureDbFile();
+      const filtered = products.filter((p) => p.id !== id);
+      persistDb(filtered);
+      return true;
     }
 
     const products = ensureDbFile();

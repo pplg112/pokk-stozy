@@ -37,7 +37,14 @@ export async function POST(request: NextRequest) {
         const listData = await listRes.json();
         if (Array.isArray(listData.models)) {
           const available = listData.models
-            .filter((m: any) => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes("generateContent"))
+            .filter((m: any) => 
+              Array.isArray(m.supportedGenerationMethods) && 
+              m.supportedGenerationMethods.includes("generateContent") &&
+              !m.name.includes("tts") &&
+              !m.name.includes("audio") &&
+              !m.name.includes("image") &&
+              !m.name.includes("embedding")
+            )
             .map((m: any) => m.name.replace(/^models\//, ""));
           if (available.length > 0) {
             // Prioritize flash models
