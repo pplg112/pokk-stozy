@@ -58,13 +58,23 @@ export default function AdminDashboardPage() {
     revertScript: `@echo off\ntitle Revert Script\necho [POKKY OPTIMIZE] คืนค่าเดิมของระบบ...\npause`,
   });
 
+  const getAuthHeaders = (): Record<string, string> => {
+    if (typeof window === "undefined") return {};
+    const token = localStorage.getItem("pokky_admin_token");
+    return token ? { "x-admin-token": token } : {};
+  };
+
   // Verify Auth & Load Data
   const loadData = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/admin/products");
+      const res = await fetch("/api/admin/products", {
+        cache: "no-store",
+        credentials: "include",
+        headers: getAuthHeaders(),
+      });
       if (res.status === 401) {
-        router.push("/admin/login");
+        window.location.href = "/admin/login";
         return;
       }
       const data = await res.json();
@@ -89,8 +99,12 @@ export default function AdminDashboardPage() {
   }, []);
 
   const handleLogout = async () => {
-    await fetch("/api/admin/auth", { method: "DELETE" });
-    router.push("/admin/login");
+    try {
+      localStorage.removeItem("pokky_admin_token");
+      document.cookie = "pokky_admin_token=; path=/; max-age=0;";
+      await fetch("/api/admin/auth", { method: "DELETE", credentials: "include" });
+    } catch {}
+    window.location.href = "/admin/login";
   };
 
   const handleOpenCreateModal = () => {
@@ -142,6 +156,8 @@ export default function AdminDashboardPage() {
     try {
       const res = await fetch("/api/admin/upload", {
         method: "POST",
+        credentials: "include",
+        headers: getAuthHeaders(),
         body,
       });
       const data = await res.json();
@@ -176,7 +192,8 @@ export default function AdminDashboardPage() {
 
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify(formData),
       });
 
@@ -200,7 +217,11 @@ export default function AdminDashboardPage() {
     if (!confirm(`คุณต้องการลบแพ็กเกจ "${name}" ใช่หรือไม่?`)) return;
 
     try {
-      const res = await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/products/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: getAuthHeaders(),
+      });
       const data = await res.json();
       if (data.success) {
         setMessage(`ลบแพ็กเกจ "${name}" เรียบร้อย`);
@@ -216,7 +237,8 @@ export default function AdminDashboardPage() {
     try {
       await fetch(`/api/admin/products/${product.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ active: !product.active }),
       });
       await loadData();

@@ -1,14 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Lock, ArrowRight, ShieldCheck, AlertCircle, Sparkles } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Lock, ArrowRight, ShieldCheck, AlertCircle } from "lucide-react";
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // If already authenticated, redirect to /admin immediately
+  useEffect(() => {
+    fetch("/api/admin/auth", { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.authenticated) {
+          window.location.href = "/admin";
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,12 +29,20 @@ export default function AdminLoginPage() {
       const res = await fetch("/api/admin/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ password }),
       });
 
       const data = await res.json();
       if (data.success) {
-        router.push("/admin");
+        if (data.token) {
+          try {
+            localStorage.setItem("pokky_admin_token", data.token);
+            document.cookie = `pokky_admin_token=${data.token}; path=/; max-age=604800; SameSite=Lax`;
+          } catch {}
+        }
+        // Force full page navigation to clear Next.js client-router cache
+        window.location.href = "/admin";
       } else {
         setError(data.error || "รหัสผ่านไม่ถูกต้อง");
       }

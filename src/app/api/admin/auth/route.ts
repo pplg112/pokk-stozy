@@ -7,7 +7,11 @@ export async function POST(request: NextRequest) {
     const { password } = body;
 
     if (password === ADMIN_PASSWORD) {
-      const response = NextResponse.json({ success: true, message: "เข้าสู่ระบบสำเร็จ" });
+      const response = NextResponse.json({ 
+        success: true, 
+        message: "เข้าสู่ระบบสำเร็จ",
+        token: ADMIN_SECRET_TOKEN 
+      });
       
       response.cookies.set({
         name: ADMIN_COOKIE_NAME,
@@ -16,6 +20,7 @@ export async function POST(request: NextRequest) {
         path: "/",
         maxAge: 60 * 60 * 24 * 7, // 7 days
         sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
       });
 
       return response;
@@ -34,7 +39,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+  const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value || request.headers.get("x-admin-token");
   if (token === ADMIN_SECRET_TOKEN) {
     return NextResponse.json({ authenticated: true });
   }
