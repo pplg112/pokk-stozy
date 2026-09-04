@@ -9,12 +9,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const productId = searchParams.get("productId") || undefined;
 
-    const reviews = db.getReviews(productId);
+    const reviews = await db.getReviews(productId);
     let rating = 0;
     let reviewCount = 0;
 
     if (productId) {
-      const stats = db.getProductRating(productId);
+      const stats = await db.getProductRating(productId);
       rating = stats.rating;
       reviewCount = stats.reviewCount;
     }
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const prod = db.getProductById(productId);
+    const prod = await db.getProductById(productId);
     if (!prod) {
       return NextResponse.json(
         { success: false, error: "Package not found" },
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       ? authorName.trim()
       : "ผู้ใช้นิรนาม";
 
-    const newReview = db.createReview({
+    const newReview = await db.createReview({
       productId,
       authorName: author,
       rating: Math.round(parsedRating),
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       imageUrl: (imageUrl && typeof imageUrl === "string") ? imageUrl : undefined,
     });
 
-    const updatedStats = db.getProductRating(productId);
+    const updatedStats = await db.getProductRating(productId);
 
     return NextResponse.json({
       success: true,

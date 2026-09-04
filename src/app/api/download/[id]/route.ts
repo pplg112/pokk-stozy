@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const product = db.getProductById(id);
+    const product = await db.getProductById(id);
 
     if (!product) {
       return NextResponse.json(
@@ -20,7 +20,7 @@ export async function GET(
     const isRevert = searchParams.get("type") === "revert";
 
     // Increment download counter
-    db.incrementDownload(id);
+    await db.incrementDownload(id);
 
     const safeFilename = product.name
       .replace(/[^a-zA-Z0-9_-]/g, "_")

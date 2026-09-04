@@ -18,7 +18,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const updated = db.updateProduct(id, body);
+    const updated = await db.updateProduct(id, body);
 
     if (!updated) {
       return NextResponse.json({ success: false, error: "Package not found" }, { status: 404 });
@@ -40,7 +40,7 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const deleted = db.deleteProduct(id);
+    const deleted = await db.deleteProduct(id);
 
     if (!deleted) {
       return NextResponse.json({ success: false, error: "Package not found" }, { status: 404 });

@@ -6,7 +6,7 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    const products = db.getProducts(true);
+    const products = await db.getProducts(true);
     return NextResponse.json({ success: true, products });
   } catch (error) {
     return NextResponse.json(

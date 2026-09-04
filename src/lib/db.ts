@@ -2,12 +2,13 @@ import fs from "fs";
 import path from "path";
 import { RealProduct, INITIAL_REAL_PRODUCTS } from "@/data/realProducts";
 import { Review } from "@/types";
+import { getSupabase } from "./supabase";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const DB_FILE = path.join(DATA_DIR, "products.json");
 const REVIEWS_FILE = path.join(DATA_DIR, "reviews.json");
 
-// In-memory memory cache for fast lookups & Vercel serverless persistence during instance lifetime
+// In-memory cache for fast lookups & serverless persistence during instance lifetime
 let memoryCache: RealProduct[] | null = null;
 let reviewsCache: Review[] | null = null;
 const fileStorage: Record<string, { filename: string; content: string }> = {};
@@ -119,7 +120,23 @@ function calculateProductRating(productId: string, reviews: Review[]) {
 }
 
 export const db = {
-  getProducts(activeOnly = true): RealProduct[] {
+  async getProducts(activeOnly = true): Promise<RealProduct[]> {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        let query = supabase.from("products").select("*");
+        if (activeOnly) {
+          query = query.eq("active", true);
+        }
+        const { data, error } = await query.order("downloadsCount", { ascending: false });
+        if (!error && data && data.length > 0) {
+          return data as RealProduct[];
+        }
+      } catch (e) {
+        console.error("Supabase getProducts error, using fallback:", e);
+      }
+    }
+
     const products = ensureDbFile();
     const reviews = ensureReviewsFile();
 
@@ -138,7 +155,19 @@ export const db = {
     return [...enriched];
   },
 
-  getProductById(id: string): RealProduct | undefined {
+  async getProductById(id: string): Promise<RealProduct | undefined> {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
+        if (!error && data) {
+          return data as RealProduct;
+        }
+      } catch (e) {
+        console.error("Supabase getProductById error, using fallback:", e);
+      }
+    }
+
     const products = ensureDbFile();
     const prod = products.find((p) => p.id === id);
     if (!prod) return undefined;
@@ -152,8 +181,7 @@ export const db = {
     };
   },
 
-  createProduct(data: Partial<RealProduct> & { name: string; category: RealProduct["category"] }): RealProduct {
-    const products = ensureDbFile();
+  async createProduct(data: Partial<RealProduct> & { name: string; category: RealProduct["category"] }): Promise<RealProduct> {
     const id = data.id || `pokky-${Date.now()}`;
     const newProd: RealProduct = {
       id,
@@ -183,12 +211,51 @@ export const db = {
       updatedAt: new Date().toISOString(),
     };
 
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data: inserted, error } = await supabase.from("products").insert(newProd).select().single();
+        if (!error && inserted) {
+          return inserted as RealProduct;
+        }
+        if (error) {
+          console.error("Supabase insert product error:", error);
+        }
+      } catch (e) {
+        console.error("Supabase createProduct error, using fallback:", e);
+      }
+    }
+
+    const products = ensureDbFile();
     products.unshift(newProd);
     persistDb(products);
     return newProd;
   },
 
-  updateProduct(id: string, updates: Partial<RealProduct>): RealProduct | null {
+  async updateProduct(id: string, updates: Partial<RealProduct>): Promise<RealProduct | null> {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data: updated, error } = await supabase
+          .from("products")
+          .update({
+            ...updates,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq("id", id)
+          .select()
+          .single();
+        if (!error && updated) {
+          return updated as RealProduct;
+        }
+        if (error) {
+          console.error("Supabase update product error:", error);
+        }
+      } catch (e) {
+        console.error("Supabase updateProduct error, using fallback:", e);
+      }
+    }
+
     const products = ensureDbFile();
     const idx = products.findIndex((p) => p.id === id);
     if (idx === -1) return null;
@@ -202,7 +269,22 @@ export const db = {
     return products[idx];
   },
 
-  deleteProduct(id: string): boolean {
+  async deleteProduct(id: string): Promise<boolean> {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { error } = await supabase.from("products").delete().eq("id", id);
+        if (!error) {
+          return true;
+        }
+        if (error) {
+          console.error("Supabase delete product error:", error);
+        }
+      } catch (e) {
+        console.error("Supabase deleteProduct error, using fallback:", e);
+      }
+    }
+
     const products = ensureDbFile();
     const initialLen = products.length;
     const filtered = products.filter((p) => p.id !== id);
@@ -213,7 +295,20 @@ export const db = {
     return false;
   },
 
-  incrementDownload(id: string): number {
+  async incrementDownload(id: string): Promise<number> {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data: prod } = await supabase.from("products").select("downloadsCount").eq("id", id).maybeSingle();
+        const currentCount = typeof prod?.downloadsCount === "number" ? prod.downloadsCount : 0;
+        const newCount = currentCount + 1;
+        await supabase.from("products").update({ downloadsCount: newCount }).eq("id", id);
+        return newCount;
+      } catch (e) {
+        console.error("Supabase incrementDownload error, using fallback:", e);
+      }
+    }
+
     const products = ensureDbFile();
     const prod = products.find((p) => p.id === id);
     if (prod) {
@@ -224,7 +319,28 @@ export const db = {
     return 0;
   },
 
-  getStats() {
+  async getStats() {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data: prods, error } = await supabase.from("products").select("downloadsCount, active, popular");
+        if (!error && prods) {
+          const totalDownloads = prods.reduce((sum, p) => sum + ((p.downloadsCount as number) || 0), 0);
+          const totalProducts = prods.length;
+          const activeProducts = prods.filter((p) => p.active).length;
+          const popularCount = prods.filter((p) => p.popular).length;
+          return {
+            totalDownloads,
+            totalProducts,
+            activeProducts,
+            popularCount,
+          };
+        }
+      } catch (e) {
+        console.error("Supabase getStats error, using fallback:", e);
+      }
+    }
+
     const products = ensureDbFile();
     const totalDownloads = products.reduce((sum, p) => sum + (p.downloadsCount || 0), 0);
     const totalProducts = products.length;
@@ -240,7 +356,23 @@ export const db = {
   },
 
   // --- Real User Reviews & Ratings (No Login Required) ---
-  getReviews(productId?: string): Review[] {
+  async getReviews(productId?: string): Promise<Review[]> {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        let query = supabase.from("reviews").select("*").order("createdAt", { ascending: false });
+        if (productId) {
+          query = query.eq("productId", productId);
+        }
+        const { data, error } = await query;
+        if (!error && data) {
+          return data as Review[];
+        }
+      } catch (e) {
+        console.error("Supabase getReviews error, using fallback:", e);
+      }
+    }
+
     const reviews = ensureReviewsFile();
     let result = [...reviews];
     if (productId) {
@@ -249,14 +381,13 @@ export const db = {
     return result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
-  createReview(data: {
+  async createReview(data: {
     productId: string;
     authorName: string;
     rating: number;
     comment: string;
     imageUrl?: string;
-  }): Review {
-    const reviews = ensureReviewsFile();
+  }): Promise<Review> {
     const newReview: Review = {
       id: `rev-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       productId: data.productId,
@@ -267,10 +398,46 @@ export const db = {
       createdAt: new Date().toISOString(),
     };
 
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data: insertedReview, error: revErr } = await supabase
+          .from("reviews")
+          .insert(newReview)
+          .select()
+          .single();
+
+        if (!revErr && insertedReview) {
+          // Re-calculate product rating and update product row in Supabase
+          const { data: allReviews } = await supabase
+            .from("reviews")
+            .select("rating")
+            .eq("productId", data.productId);
+
+          if (allReviews && allReviews.length > 0) {
+            const count = allReviews.length;
+            const avg = Number((allReviews.reduce((sum, r) => sum + r.rating, 0) / count).toFixed(1));
+            await supabase
+              .from("products")
+              .update({ rating: avg, reviewCount: count })
+              .eq("id", data.productId);
+          }
+
+          return insertedReview as Review;
+        }
+        if (revErr) {
+          console.error("Supabase insert review error:", revErr);
+        }
+      } catch (e) {
+        console.error("Supabase createReview error, using fallback:", e);
+      }
+    }
+
+    const reviews = ensureReviewsFile();
     reviews.unshift(newReview);
     persistReviews(reviews);
 
-    // Update product rating and review count in products table
+    // Update product rating and review count in local products
     const products = ensureDbFile();
     const prod = products.find((p) => p.id === data.productId);
     if (prod) {
@@ -283,7 +450,26 @@ export const db = {
     return newReview;
   },
 
-  getProductRating(productId: string): { rating: number; reviewCount: number } {
+  async getProductRating(productId: string): Promise<{ rating: number; reviewCount: number }> {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data: reviews } = await supabase
+          .from("reviews")
+          .select("rating")
+          .eq("productId", productId);
+        if (reviews) {
+          const count = reviews.length;
+          const rating = count > 0
+            ? Number((reviews.reduce((sum, r) => sum + r.rating, 0) / count).toFixed(1))
+            : 0;
+          return { rating, reviewCount: count };
+        }
+      } catch (e) {
+        console.error("Supabase getProductRating error, using fallback:", e);
+      }
+    }
+
     const reviews = ensureReviewsFile();
     return calculateProductRating(productId, reviews);
   },

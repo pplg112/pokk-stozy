@@ -12,8 +12,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const products = db.getProducts(false); // Return all including inactive
-  const stats = db.getStats();
+  const products = await db.getProducts(false); // Return all including inactive
+  const stats = await db.getStats();
 
   return NextResponse.json({ success: true, products, stats });
 }
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const created = db.createProduct(data);
+    const created = await db.createProduct(data);
     return NextResponse.json({ success: true, product: created });
   } catch (error) {
     return NextResponse.json(
