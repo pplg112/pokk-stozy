@@ -129,6 +129,30 @@ function sanitizeCode(val: string | undefined | null): string {
   return val.replace(/\0/g, "");
 }
 
+function parseProduct(prod: any): RealProduct {
+  let downloadUrl = prod.downloadUrl;
+  let scriptContent = prod.scriptContent || "";
+
+  if (!downloadUrl && typeof scriptContent === "string" && scriptContent.startsWith("DOWNLOAD_URL:")) {
+    const newlineIdx = scriptContent.indexOf("\n");
+    if (newlineIdx !== -1) {
+      downloadUrl = scriptContent.substring("DOWNLOAD_URL:".length, newlineIdx).trim();
+      scriptContent = scriptContent.substring(newlineIdx + 1).replace(/^---SCRIPT---\n?/, "");
+    } else {
+      downloadUrl = scriptContent.substring("DOWNLOAD_URL:".length).trim();
+      scriptContent = "";
+    }
+  } else if (!downloadUrl && typeof scriptContent === "string" && (scriptContent.startsWith("http://") || scriptContent.startsWith("https://"))) {
+    downloadUrl = scriptContent.trim();
+  }
+
+  return {
+    ...prod,
+    downloadUrl,
+    scriptContent,
+  };
+}
+
 export const db = {
   async getProducts(activeOnly = true): Promise<RealProduct[]> {
     const supabase = getSupabase();
@@ -140,7 +164,7 @@ export const db = {
         }
         const { data, error } = await query.order("downloadsCount", { ascending: false });
         if (!error && data && data.length > 0) {
-          return data as RealProduct[];
+          return (data as any[]).map(parseProduct);
         }
       } catch (e) {
         console.error("Supabase getProducts error, using fallback:", e);
@@ -152,11 +176,11 @@ export const db = {
 
     const enriched = products.map((prod) => {
       const { rating, reviewCount } = calculateProductRating(prod.id, reviews);
-      return {
+      return parseProduct({
         ...prod,
         rating,
         reviewCount,
-      };
+      });
     });
 
     if (activeOnly) {
@@ -171,7 +195,7 @@ export const db = {
       try {
         const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
         if (!error && data) {
-          return data as RealProduct;
+          return parseProduct(data);
         }
       } catch (e) {
         console.error("Supabase getProductById error, using fallback:", e);
@@ -184,21 +208,34 @@ export const db = {
 
     const reviews = ensureReviewsFile();
     const { rating, reviewCount } = calculateProductRating(prod.id, reviews);
-    return {
+    return parseProduct({
       ...prod,
       rating,
       reviewCount,
-    };
+    });
   },
 
   async createProduct(data: Partial<RealProduct> & { name: string; category: RealProduct["category"] }): Promise<RealProduct> {
     const id = data.id || `pokky-${Date.now()}`;
+    
+    let scriptContentToStore = data.scriptContent?.startsWith("data:")
+      ? data.scriptContent
+      : sanitizeCode(data.scriptContent || `@echo off\ntitle ${data.name}\necho [POKKY OPTIMIZE] กำลังดำเนินการปรับแต่ง...\npause`);
+
+    if (data.downloadUrl && data.downloadUrl.trim().startsWith("http")) {
+      const cleanUrl = data.downloadUrl.trim();
+      if (!scriptContentToStore.includes(cleanUrl)) {
+        scriptContentToStore = `DOWNLOAD_URL:${cleanUrl}\n---SCRIPT---\n${scriptContentToStore}`;
+      }
+    }
+
     const newProd: RealProduct = {
       id,
       name: sanitizeString(data.name),
       tagline: sanitizeString(data.tagline || "สคริปต์ปรับแต่งประสิทธิภาพเกมเมอร์ระดับ Esports"),
       description: sanitizeString(data.description || "สคริปต์ปรับแต่งคอมพิวเตอร์เพื่อความเสถียรและเฟรมเรตสูงสุด"),
       imageUrl: data.imageUrl ? sanitizeString(data.imageUrl) : undefined,
+      downloadUrl: data.downloadUrl ? sanitizeString(data.downloadUrl) : undefined,
       category: data.category,
       fileFormat: sanitizeString(data.fileFormat || ".BAT"),
       fileSize: sanitizeString(data.fileSize || "50 KB"),
@@ -221,9 +258,7 @@ export const db = {
         filename: sanitizeString(f.filename),
         description: sanitizeString(f.description)
       })),
-      scriptContent: data.scriptContent?.startsWith("data:")
-        ? data.scriptContent
-        : sanitizeCode(data.scriptContent || `@echo off\ntitle ${data.name}\necho [POKKY OPTIMIZE] กำลังดำเนินการปรับแต่ง...\npause`),
+      scriptContent: scriptContentToStore,
       revertScript: sanitizeCode(data.revertScript || `@echo off\ntitle Revert - ${data.name}\necho คืนค่าเดิมของระบบเรียบร้อย\npause`),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -231,17 +266,18 @@ export const db = {
 
     const supabase = getSupabase();
     if (supabase) {
-      const { data: inserted, error } = await supabase.from("products").insert(newProd).select().single();
+      const { downloadUrl: _omit, ...dbProd } = newProd;
+      const { data: inserted, error } = await supabase.from("products").insert(dbProd).select().single();
       if (error) {
         console.error("Supabase insert product error:", error);
         throw new Error(`ไม่สามารถบันทึกลงฐานข้อมูล Supabase ได้: ${error.message || error.details || error.code}`);
       }
       if (inserted) {
-        // Also update local cache for consistency
+        const parsed = parseProduct(inserted);
         const products = ensureDbFile();
-        products.unshift(inserted as RealProduct);
+        products.unshift(parsed);
         persistDb(products);
-        return inserted as RealProduct;
+        return parsed;
       }
     }
 
@@ -259,11 +295,24 @@ export const db = {
     if (sanitizedUpdates.compatibility !== undefined) sanitizedUpdates.compatibility = sanitizeString(sanitizedUpdates.compatibility);
     if (sanitizedUpdates.fileFormat !== undefined) sanitizedUpdates.fileFormat = sanitizeString(sanitizedUpdates.fileFormat);
     if (sanitizedUpdates.fileSize !== undefined) sanitizedUpdates.fileSize = sanitizeString(sanitizedUpdates.fileSize);
-    if (sanitizedUpdates.scriptContent !== undefined) {
-      sanitizedUpdates.scriptContent = sanitizedUpdates.scriptContent.startsWith("data:")
-        ? sanitizedUpdates.scriptContent
-        : sanitizeCode(sanitizedUpdates.scriptContent);
+    
+    let scriptContentToStore = sanitizedUpdates.scriptContent;
+    if (scriptContentToStore !== undefined) {
+      scriptContentToStore = scriptContentToStore.startsWith("data:")
+        ? scriptContentToStore
+        : sanitizeCode(scriptContentToStore);
     }
+    if (sanitizedUpdates.downloadUrl && sanitizedUpdates.downloadUrl.trim().startsWith("http")) {
+      const cleanUrl = sanitizedUpdates.downloadUrl.trim();
+      const baseContent = scriptContentToStore || "";
+      if (!baseContent.includes(cleanUrl)) {
+        scriptContentToStore = `DOWNLOAD_URL:${cleanUrl}\n---SCRIPT---\n${baseContent}`;
+      }
+    }
+    if (scriptContentToStore !== undefined) {
+      sanitizedUpdates.scriptContent = scriptContentToStore;
+    }
+
     if (sanitizedUpdates.revertScript !== undefined) sanitizedUpdates.revertScript = sanitizeCode(sanitizedUpdates.revertScript);
     if (sanitizedUpdates.features) sanitizedUpdates.features = sanitizedUpdates.features.map(sanitizeString);
     if (sanitizedUpdates.requirements) sanitizedUpdates.requirements = sanitizedUpdates.requirements.map(sanitizeString);
@@ -276,10 +325,11 @@ export const db = {
 
     const supabase = getSupabase();
     if (supabase) {
+      const { downloadUrl: _omit, ...dbUpdates } = sanitizedUpdates;
       const { data: updated, error } = await supabase
         .from("products")
         .update({
-          ...sanitizedUpdates,
+          ...dbUpdates,
           updatedAt: new Date().toISOString(),
         })
         .eq("id", id)
@@ -290,13 +340,14 @@ export const db = {
         throw new Error(`ไม่สามารถอัปเดตข้อมูลบน Supabase ได้: ${error.message || error.details || error.code}`);
       }
       if (updated) {
+        const parsed = parseProduct(updated);
         const products = ensureDbFile();
         const idx = products.findIndex((p) => p.id === id);
         if (idx !== -1) {
-          products[idx] = updated as RealProduct;
+          products[idx] = parsed;
           persistDb(products);
         }
-        return updated as RealProduct;
+        return parsed;
       }
     }
 
@@ -304,11 +355,11 @@ export const db = {
     const idx = products.findIndex((p) => p.id === id);
     if (idx === -1) return null;
 
-    products[idx] = {
+    products[idx] = parseProduct({
       ...products[idx],
       ...sanitizedUpdates,
       updatedAt: new Date().toISOString(),
-    };
+    });
     persistDb(products);
     return products[idx];
   },

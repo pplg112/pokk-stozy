@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import JSZip from "jszip";
 import { RealProduct } from "@/data/realProducts";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { 
@@ -108,6 +109,7 @@ export default function AdminDashboardPage() {
     popular: false,
     active: true,
     imageUrl: "",
+    downloadUrl: "",
     includedFiles: [] as { filename: string; description: string }[],
     scriptContent: `@echo off\ntitle Optimization Script\necho [POKKY OPTIMIZE] กำลังเริ่มการปรับแต่ง...\npause`,
     revertScript: `@echo off\ntitle Revert Script\necho [POKKY OPTIMIZE] คืนค่าเดิมของระบบ...\npause`,
@@ -228,6 +230,7 @@ export default function AdminDashboardPage() {
       popular: false,
       active: true,
       imageUrl: CATEGORY_COVER_PRESETS["bundles"],
+      downloadUrl: "",
       includedFiles: [],
       scriptContent: `@echo off\ntitle My Optimization Script\necho [POKKY OPTIMIZE] กำลังเริ่มการปรับแต่ง...\npause`,
       revertScript: `@echo off\ntitle Revert Script\necho [POKKY OPTIMIZE] คืนค่าเดิมของระบบ...\npause`,
@@ -249,6 +252,7 @@ export default function AdminDashboardPage() {
       popular: product.popular,
       active: product.active,
       imageUrl: product.imageUrl || CATEGORY_COVER_PRESETS[product.category] || "",
+      downloadUrl: product.downloadUrl || "",
       includedFiles: product.includedFiles || [],
       scriptContent: product.scriptContent,
       revertScript: product.revertScript,
@@ -273,39 +277,136 @@ export default function AdminDashboardPage() {
     reader.readAsDataURL(file);
   };
 
-  // Process File with Gemini AI Auto-Pilot
+  // Helpers for client-side file reading
+  const readFileAsDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const readFileAsText = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const buffer = reader.result as ArrayBuffer;
+        const u8 = new Uint8Array(buffer);
+        let text = "";
+        if (u8.length >= 2 && u8[0] === 0xff && u8[1] === 0xfe) {
+          text = new TextDecoder("utf-16le").decode(u8.subarray(2));
+        } else if (u8.length >= 2 && u8[0] === 0xfe && u8[1] === 0xff) {
+          text = new TextDecoder("utf-16be").decode(u8.subarray(2));
+        } else if (u8.length >= 4 && u8[1] === 0 && u8[3] === 0) {
+          text = new TextDecoder("utf-16le").decode(u8);
+        } else {
+          text = new TextDecoder("utf-8").decode(u8);
+        }
+        resolve(text.replace(/\0/g, ""));
+      };
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
+  // Process File directly in browser with JSZip and Gemini AI Auto-Pilot (Bypassing Vercel 4.5MB limit)
   const processFileWithAI = async (file: File) => {
     if (!file) return;
 
     setUploading(true);
     setIsAnalyzing(true);
-    setAiStatusMessage("กำลังอ่านและอัปโหลดไฟล์สคริปต์...");
+    setAiStatusMessage("กำลังอ่านและประมวลผลไฟล์สคริปต์...");
 
     try {
-      // 1. Upload file to storage
-      const body = new FormData();
-      body.append("file", file);
+      const filename = file.name;
+      const sizeInBytes = file.size;
+      const formattedSize =
+        sizeInBytes > 1024 * 1024
+          ? `${(sizeInBytes / (1024 * 1024)).toFixed(1)} MB`
+          : `${Math.round(sizeInBytes / 1024 || 1)} KB`;
 
-      const uploadRes = await fetch("/api/admin/upload", {
-        method: "POST",
-        credentials: "include",
-        headers: getAuthHeaders(),
-        body,
-      });
-      const uploadData = await uploadRes.json();
+      const extension = filename.split(".").pop()?.toUpperCase() || "BAT";
+      const fileFormat = `.${extension}`;
 
-      if (!uploadData.success) {
-        showAlert(uploadData.error || "ไม่สามารถอ่านไฟล์ได้", "อัปโหลดไม่สำเร็จ");
-        return;
+      let scriptContent = "";
+      let analysisContent = "";
+      let uploadedIncludedFiles: { filename: string; description: string }[] = [];
+      const isLargeFile = sizeInBytes > 4 * 1024 * 1024;
+
+      if (extension === "ZIP") {
+        try {
+          const zip = await JSZip.loadAsync(file);
+          const zipEntries = Object.keys(zip.files)
+            .map((k) => zip.files[k])
+            .filter((e) => !e.dir);
+
+          uploadedIncludedFiles = zipEntries.map((e) => {
+            const lower = e.name.toLowerCase();
+            let desc = "ไฟล์ส่วนประกอบในแพ็กเกจ";
+            if (lower.endsWith(".reg")) desc = "ไฟล์ Registry ปรับแต่งระบบ Windows";
+            else if (lower.endsWith(".cmd") || lower.endsWith(".bat")) desc = "ไฟล์สคริปต์คำสั่งการทำงานหลัก";
+            else if (lower.endsWith(".ps1")) desc = "สคริปต์ PowerShell";
+            else if (lower.endsWith(".txt")) desc = "คู่มือหรือข้อความอธิบาย";
+            return {
+              filename: e.name,
+              description: desc,
+            };
+          });
+
+          // Extract text from scripts inside zip for AI analysis
+          for (const entry of zipEntries) {
+            const lower = entry.name.toLowerCase();
+            if (
+              lower.endsWith(".bat") ||
+              lower.endsWith(".cmd") ||
+              lower.endsWith(".reg") ||
+              lower.endsWith(".ps1") ||
+              lower.endsWith(".txt")
+            ) {
+              try {
+                const text = (await entry.async("text")).replace(/\0/g, "").slice(0, 3000);
+                analysisContent += `--- ไฟล์: ${entry.name} ---\n${text}\n\n`;
+              } catch {}
+            }
+          }
+
+          if (!analysisContent) {
+            analysisContent = `แพ็กเกจ ZIP ประกอบด้วยไฟล์: ${uploadedIncludedFiles.map((f) => f.filename).join(", ")}`;
+          }
+
+          if (isLargeFile) {
+            scriptContent = `@echo off\ntitle ${filename}\necho [POKKY OPTIMIZE] แพ็กเกจไฟล์ ZIP ขนาดใหญ่ (${formattedSize})\necho กรุณาดาวน์โหลดผ่านลิงก์ตรงภายนอกที่ระบุไว้\npause`;
+            showAlert(
+              `ไฟล์ ZIP มีขนาด ${formattedSize} (มากกว่า 4 MB) เพื่อความเร็วสูงสุดและไม่ติดข้อจำกัดของระบบ กรุณาใส่ "ลิงก์ดาวน์โหลดตรง (Google Drive / Mediafire / Mega)" ในช่องข้อมูลด้านล่าง`,
+              "แพ็กเกจขนาดใหญ่"
+            );
+          } else {
+            // Read binary ZIP directly as Base64 Data URL
+            scriptContent = await readFileAsDataURL(file);
+          }
+        } catch (zipErr) {
+          console.error("ZIP reading error:", zipErr);
+          showAlert("ไม่สามารถอ่านข้อมูลภายในไฟล์ ZIP ได้ กรุณาตรวจสอบความสมบูรณ์ของไฟล์", "ไฟล์ ZIP ขัดข้อง");
+          return;
+        }
+      } else {
+        // Text script file (.bat, .cmd, .reg, .ps1, .txt)
+        try {
+          scriptContent = await readFileAsText(file);
+          analysisContent = scriptContent.slice(0, 5000);
+          uploadedIncludedFiles = [
+            { filename: filename, description: "ไฟล์สคริปต์คำสั่งหลัก" },
+            { filename: `REVERT_${filename.replace(/\.[^/.]+$/, "")}.bat`, description: "สคริปต์กู้คืนค่าเดิมของระบบ" }
+          ];
+        } catch (readErr) {
+          console.error("File reading error:", readErr);
+          showAlert("ไม่สามารถอ่านข้อความจากไฟล์ได้", "อ่านไฟล์ไม่สำเร็จ");
+          return;
+        }
       }
 
-      const scriptContent = uploadData.content || "";
-      const fileFormat = uploadData.fileFormat || ".BAT";
-      const fileSize = uploadData.fileSize || "50 KB";
-
-      const uploadedIncludedFiles = uploadData.includedFiles || [];
-
-      // 2. Call Gemini AI / Parser analysis
+      // 2. Call Gemini AI / Parser analysis with tiny text payload
       setAiStatusMessage(
         geminiApiKey
           ? "Google Gemini AI กำลังวิเคราะห์โค้ด ปรับแต่งข้อมูล และสร้าง Revert Script..."
@@ -318,7 +419,7 @@ export default function AdminDashboardPage() {
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({
           filename: file.name,
-          content: uploadData.analysisContent || scriptContent,
+          content: analysisContent || filename,
           userApiKey: geminiApiKey,
         }),
       });
@@ -335,7 +436,7 @@ export default function AdminDashboardPage() {
           description: d.description || prev.description,
           compatibility: d.compatibility || prev.compatibility,
           fileFormat: fileFormat,
-          fileSize: fileSize,
+          fileSize: formattedSize,
           includedFiles: uploadedIncludedFiles.length > 0 ? uploadedIncludedFiles : prev.includedFiles,
           scriptContent: scriptContent,
           revertScript: d.revertScript || prev.revertScript,
@@ -360,16 +461,16 @@ export default function AdminDashboardPage() {
           ...prev,
           name: prev.name || file.name.replace(/\.[^/.]+$/, ""),
           fileFormat: fileFormat,
-          fileSize: fileSize,
+          fileSize: formattedSize,
           includedFiles: uploadedIncludedFiles.length > 0 ? uploadedIncludedFiles : prev.includedFiles,
           scriptContent: scriptContent,
         }));
-        setMessage(`อัปโหลดไฟล์ "${file.name}" สำเร็จและนำเข้าสู่ระบบแล้ว`);
+        setMessage(`โหลดไฟล์ "${file.name}" เข้าสู่ระบบเรียบร้อย`);
         setTimeout(() => setMessage(""), 4000);
       }
     } catch (err) {
       console.error(err);
-      showAlert("เกิดข้อผิดพลาดในการประมวลผลด้วย AI", "ระบบขัดข้อง");
+      showAlert("เกิดข้อผิดพลาดในการประมวลผลไฟล์", "ระบบขัดข้อง");
     } finally {
       setUploading(false);
       setIsAnalyzing(false);
@@ -1050,6 +1151,27 @@ export default function AdminDashboardPage() {
                     className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white"
                   />
                 </div>
+              </div>
+
+              {/* Direct Download Link (Optional / Recommended for large files) */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <label className="text-xs font-mono text-slate-300 font-semibold flex items-center gap-2">
+                    <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>ลิงก์ดาวน์โหลดตรงภายนอก (Google Drive / Mediafire / Mega / GitHub)</span>
+                  </label>
+                  <span className="text-[11px] font-mono text-cyan-400">ตัวเลือกเพิ่มเติมสำหรับไฟล์ขนาดใหญ่ {">"} 4 MB</span>
+                </div>
+                <input
+                  type="url"
+                  value={formData.downloadUrl}
+                  onChange={(e) => setFormData({ ...formData, downloadUrl: e.target.value })}
+                  placeholder="https://drive.google.com/file/d/.../view หรือ https://www.mediafire.com/... หรือ https://mega.nz/..."
+                  className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-green-400 transition-colors"
+                />
+                <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
+                  หากใส่ลิงก์นี้ เมื่อผู้ใช้กดดาวน์โหลดบนหน้าเว็บ ระบบจะเปิดลิงก์ดาวน์โหลดตรงความเร็วสูงนี้ให้ทันที ช่วยให้รองรับไฟล์ขนาดใหญ่ได้ไม่จำกัดและไม่ติดข้อจำกัดของระบบ
+                </p>
               </div>
 
               {/* Code Editor or ZIP Package Preview */}

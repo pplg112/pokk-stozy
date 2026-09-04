@@ -20,6 +20,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "No file uploaded" }, { status: 400 });
     }
 
+    if (file.size > 4.5 * 1024 * 1024) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `ไฟล์มีขนาด ${(file.size / (1024 * 1024)).toFixed(1)} MB ซึ่งเกินขีดจำกัดของเซิร์ฟเวอร์ (4.5 MB) กรุณาระบุลิงก์ดาวน์โหลดตรง เช่น Google Drive หรือ Mediafire แทน` 
+        }, 
+        { status: 400 }
+      );
+    }
+
     const filename = file.name;
     const sizeInBytes = file.size;
     const formattedSize =

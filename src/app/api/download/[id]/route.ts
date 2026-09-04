@@ -22,6 +22,10 @@ export async function GET(
     // Increment download counter
     await db.incrementDownload(id);
 
+    if (!isRevert && product.downloadUrl && product.downloadUrl.trim().startsWith("http")) {
+      return NextResponse.redirect(product.downloadUrl.trim(), 302);
+    }
+
     const safeFilename = product.name
       .replace(/[^a-zA-Z0-9_\-\u0E00-\u0E7F]/g, "_")
       .replace(/_+/g, "_")

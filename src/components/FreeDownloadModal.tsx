@@ -34,13 +34,18 @@ export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
   const [downloadId, setDownloadId] = useState("");
 
   const executeDownload = (prod: DigitalProduct) => {
-    // 1. Trigger actual browser download from API
-    const link = document.createElement("a");
-    link.href = `/api/download/${prod.id}`;
-    link.setAttribute("download", "");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // 1. Trigger actual browser download from API or direct download URL
+    if (prod.downloadUrl && prod.downloadUrl.trim().startsWith("http")) {
+      window.open(prod.downloadUrl.trim(), "_blank", "noopener,noreferrer");
+      fetch(`/api/download/${prod.id}`, { method: "HEAD" }).catch(() => {});
+    } else {
+      const link = document.createElement("a");
+      link.href = `/api/download/${prod.id}`;
+      link.setAttribute("download", "");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
 
     // 2. Log local download record
     const record = recordFreeDownload(prod);
