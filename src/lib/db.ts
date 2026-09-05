@@ -248,13 +248,29 @@ export const db = {
       reviewCount: 0,
       popular: data.popular ?? false,
       active: data.active ?? true,
-      features: (data.features || ["ปรับแต่งระบบอัตโนมัติ", "ปลอดภัย มีไฟล์ Revert ในตัว"]).map(sanitizeString),
-      requirements: (data.requirements || ["Windows 10 หรือ 11 (64-bit)", "สิทธิ์ Administrator"]).map(sanitizeString),
+      features: (data.features && data.features.length > 0
+        ? data.features
+        : [
+            "ปรับแต่งและเพิ่มความเสถียรของระบบ Windows",
+            "ลด Input Delay และ Latency ในการเล่นเกม",
+            "มีสคริปต์ Revert คืนค่าเดิมของระบบ ปลอดภัย 100%"
+          ]
+      ).map(sanitizeString),
+      requirements: (data.requirements && data.requirements.length > 0
+        ? data.requirements
+        : ["Windows 10 หรือ 11 (64-bit ทุกรุ่น)", "สิทธิ์ Administrator (Run as Administrator)"]
+      ).map(sanitizeString),
       includedFiles: (data.includedFiles && data.includedFiles.length > 0
         ? data.includedFiles
         : [
-            { filename: `${id}.bat`, description: "ไฟล์สคริปต์ปรับแต่งหลัก" },
-            { filename: `REVERT_${id}.bat`, description: "สคริปต์กู้คืนค่ามาตรฐานเดิม" }
+            {
+              filename: `${(data.name || "Pokky_Optimizer").replace(/[^a-zA-Z0-9_\-]/g, "_").replace(/_+/g, "_")}.cmd`,
+              description: "สคริปต์ปรับแต่งหลัก"
+            },
+            {
+              filename: `REVERT_${(data.name || "Pokky_Optimizer").replace(/[^a-zA-Z0-9_\-]/g, "_").replace(/_+/g, "_")}.bat`,
+              description: "สคริปต์กู้คืนค่ามาตรฐานเดิม"
+            }
           ]
       ).map(f => ({
         filename: sanitizeString(f.filename),
