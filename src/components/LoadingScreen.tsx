@@ -59,16 +59,15 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
       {/* Main Content Card */}
       <div className="relative z-10 flex flex-col items-center px-6 max-w-md w-full text-center">
         
-        {/* Logo Container with Breathing Neon Aura */}
-        <div className="relative mb-6">
-          <div className="absolute -inset-3 bg-gradient-to-r from-emerald-500/30 to-green-400/30 rounded-2xl blur-xl animate-pulse" />
-          <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#0d1117] border border-emerald-500/40 p-3 shadow-[0_0_30px_rgba(16,185,129,0.3)] flex items-center justify-center">
-            <img
-              src="/logo.png"
-              alt="Pokky Stozy"
-              className="w-full h-full object-contain drop-shadow-[0_0_12px_rgba(74,222,128,0.5)] animate-[pulse_2s_ease-in-out_infinite]"
-            />
-          </div>
+        {/* Pure Logo with Vibrant Neon Glow Aura (No Box / Pure Standalone Emblem) */}
+        <div className="relative mb-6 flex items-center justify-center">
+          <div className="absolute -inset-6 bg-gradient-to-r from-emerald-500/40 via-green-400/35 to-cyan-500/30 rounded-full blur-2xl animate-pulse pointer-events-none" />
+          <div className="absolute -inset-2 bg-green-500/30 rounded-full blur-lg animate-[pulse_2s_ease-in-out_infinite] pointer-events-none" />
+          <img
+            src="/logo.png"
+            alt="Pokky Stozy"
+            className="relative w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-[0_0_25px_rgba(74,222,128,0.7)] drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-[pulse_3s_ease-in-out_infinite]"
+          />
         </div>
 
         {/* Brand Title */}
