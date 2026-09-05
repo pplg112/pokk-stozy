@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useDeferredValue } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { DIGITAL_PRODUCTS } from "@/data/products";
 import { DigitalProduct, ProductCategory } from "@/types";
 import { ProductCard } from "./ProductCard";
@@ -79,16 +79,14 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
     { id: "memory-bios" as ProductCategory, label: "แรม & ไบออส", icon: Activity },
   ];
 
-  const deferredQuery = useDeferredValue(searchQuery.trim().toLowerCase());
-
   const filteredProducts = useMemo(() => {
     return productsList.filter((prod) => {
       const matchCat = selectedCategory === "all" || prod.category === selectedCategory;
       const matchQuery = 
-        !deferredQuery || 
-        prod.name.toLowerCase().includes(deferredQuery) ||
-        prod.tagline.toLowerCase().includes(deferredQuery) ||
-        prod.fileFormat.toLowerCase().includes(deferredQuery);
+        !searchQuery || 
+        prod.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        prod.tagline.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        prod.fileFormat.toLowerCase().includes(searchQuery.toLowerCase());
       return matchCat && matchQuery;
     }).sort((a, b) => {
       if (sortBy === "popular") return b.downloadsCount - a.downloadsCount;
@@ -96,7 +94,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
       if (sortBy === "name") return a.name.localeCompare(b.name, "th");
       return 0;
     });
-  }, [productsList, selectedCategory, deferredQuery, sortBy]);
+  }, [productsList, selectedCategory, searchQuery, sortBy]);
 
   // 9 Slots Pagination
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / ITEMS_PER_PAGE));

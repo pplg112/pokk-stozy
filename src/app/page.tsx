@@ -9,6 +9,7 @@ import { FreeDownloadModal } from "@/components/FreeDownloadModal";
 import { FaqSection } from "@/components/FaqSection";
 import { Footer } from "@/components/Footer";
 import { CyberBackground } from "@/components/CyberBackground";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import { DIGITAL_PRODUCTS } from "@/data/products";
 import { DigitalProduct, DownloadRecord } from "@/types";
 import { ArrowUp } from "lucide-react";
@@ -18,24 +19,20 @@ export default function HomePage() {
   const [selectedProduct, setSelectedProduct] = useState<DigitalProduct | null>(null);
   const [downloadingProduct, setDownloadingProduct] = useState<DigitalProduct | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFadingOut, setIsFadingOut] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
 
   useEffect(() => {
-    let ticking = false;
     const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          setShowBackToTop(window.scrollY > 350);
-          ticking = false;
-        });
-        ticking = true;
-      }
+      setShowBackToTop(window.scrollY > 350);
     };
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const refreshProducts = async () => {
+    const startTime = Date.now();
     try {
       const res = await fetch("/api/products", { cache: "no-store" });
       const data = await res.json();
@@ -44,6 +41,17 @@ export default function HomePage() {
       }
     } catch {
       // Retain existing products on network error
+    } finally {
+      const elapsed = Date.now() - startTime;
+      const minDuration = 650;
+      const delay = Math.max(0, minDuration - elapsed);
+
+      setTimeout(() => {
+        setIsFadingOut(true);
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 500);
+      }, delay);
     }
   };
 
@@ -140,7 +148,13 @@ export default function HomePage() {
         onDownloadComplete={handleDownloadComplete}
       />
 
-
+      {/* Cyber Esports Loading Screen */}
+      {isLoading && (
+        <LoadingScreen
+          isFadingOut={isFadingOut}
+          subMessage="ESPORTS SYSTEM OPTIMIZER"
+        />
+      )}
 
       {/* Floating Back to Top Button */}
       {showBackToTop && (

@@ -17,7 +17,7 @@ interface ProductCardProps {
   onViewDetails: (product: DigitalProduct) => void;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = React.memo(({
+export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   onBuyNow,
   onViewDetails,
@@ -51,8 +51,6 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({
               <img 
                 src={product.imageUrl} 
                 alt={product.name}
-                loading="lazy"
-                decoding="async"
                 className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105" 
               />
             </div>
@@ -171,6 +169,4 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({
 
     </div>
   );
-});
-
-ProductCard.displayName = "ProductCard";
+};
