@@ -13,7 +13,9 @@ import {
   FileCode2, 
   Clock,
   Sparkles,
-  Loader2
+  Loader2,
+  AlertTriangle,
+  ShieldAlert
 } from "lucide-react";
 
 interface FreeDownloadModalProps {
@@ -32,6 +34,8 @@ export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
   const [step, setStep] = useState<"initial" | "preparing" | "completed">("initial");
   const [countdown, setCountdown] = useState(ADS_CONFIG.downloadMonetization.countdownSeconds || 5);
   const [downloadId, setDownloadId] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showFullTerms, setShowFullTerms] = useState(false);
 
   const executeDownload = (prod: DigitalProduct) => {
     // 1. Trigger actual browser download from API or direct download URL
@@ -108,6 +112,8 @@ export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
   const handleReset = () => {
     setStep("initial");
     setCountdown(ADS_CONFIG.downloadMonetization.countdownSeconds || 5);
+    setAcceptedTerms(false);
+    setShowFullTerms(false);
     onClose();
   };
 
@@ -210,13 +216,66 @@ export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
                 </div>
               )}
 
+              {/* Terms of Service & Liability Disclaimer Agreement */}
+              <div className="p-4 rounded-xl bg-red-950/25 border border-red-500/30 space-y-3 font-sans">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-red-400 font-bold font-mono text-xs sm:text-sm">
+                    <ShieldAlert className="w-4 h-4 shrink-0 text-red-400" />
+                    <span>ข้อตกลงการใช้งานและข้อจำกัดความรับผิดชอบ:</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowFullTerms(!showFullTerms)}
+                    className="text-[11px] font-mono text-slate-400 hover:text-white underline cursor-pointer"
+                  >
+                    {showFullTerms ? "ย่อข้อตกลง" : "อ่านฉบับเต็ม"}
+                  </button>
+                </div>
+
+                <div className="text-xs text-slate-300 space-y-1.5 leading-relaxed">
+                  <p>
+                    สคริปต์และไฟล์ทั้งหมดจัดทำขึ้นเพื่อการศึกษาและปรับแต่งประสิทธิภาพระบบ ผู้ใช้งานตกลงยินยอมรับความเสี่ยงที่อาจเกิดขึ้นด้วยความสมัครใจของตนเองทั้งหมด (<strong className="text-white">Use at your own risk</strong>) ทาง Pokky Stozy และผู้จัดทำ <strong className="text-red-300">ขอปฏิเสธความรับผิดชอบต่อความเสียหายใดๆ ทั้งสิ้น</strong> ต่ออุปกรณ์ ซอฟต์แวร์ หรือข้อมูลของผู้ใช้งานทุกกรณี
+                  </p>
+                  {showFullTerms && (
+                    <ul className="mt-2 pl-4 list-disc space-y-1 text-slate-400 text-[11px] border-t border-white/10 pt-2 leading-relaxed">
+                      <li>ผู้ใช้มีหน้าที่ตรวจสอบ Source Code และตัดสินใจในการรันด้วยวิจารณญาณของตนเอง</li>
+                      <li>ผู้ใช้ต้องสร้างจุดสำรองระบบ (System Restore Point) ก่อนเริ่มรันสคริปต์เสมอ</li>
+                      <li>หากเกิดปัญหา ผู้ใช้สามารถใช้ไฟล์ Revert Script เพื่อคืนค่าเดิม หรือย้อนกลับด้วย System Restore Point ได้</li>
+                      <li>ทางผู้พัฒนาไม่มีส่วนรับผิดชอบต่อการใช้งานผิดวิธี การขัดข้องของฮาร์ดแวร์ หรือผลกระทบจากอัปเดตระบบของ Windows</li>
+                    </ul>
+                  )}
+                </div>
+
+                {/* Mandatory Agreement Checkbox */}
+                <label className="flex items-start gap-2.5 pt-2 border-t border-red-500/20 cursor-pointer select-none group">
+                  <input
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-white/30 text-green-500 focus:ring-green-400 focus:ring-offset-0 bg-black/60 cursor-pointer accent-green-400"
+                  />
+                  <span className={`text-xs leading-relaxed transition-colors ${acceptedTerms ? "text-green-300 font-semibold" : "text-slate-200 group-hover:text-white"}`}>
+                    ข้าพเจ้าได้อ่าน เข้าใจ และยอมรับข้อตกลงการใช้งานและข้อจำกัดความรับผิดชอบข้างต้นแล้ว (ยินยอมรับความเสี่ยงในการปรับแต่งระบบด้วยตนเอง)
+                  </span>
+                </label>
+              </div>
+
               {/* Start Preparation Button */}
               <button
                 onClick={handleStartPreparation}
-                className="w-full py-4 sm:py-5 px-8 rounded-2xl font-bold font-mono text-base sm:text-lg text-slate-950 bg-green-400 hover:bg-green-300 transition-all flex items-center justify-center gap-2.5 shadow-xl shadow-green-500/25 cursor-pointer"
+                disabled={!acceptedTerms}
+                className={`w-full py-4 sm:py-5 px-8 rounded-2xl font-bold font-mono text-base sm:text-lg transition-all flex items-center justify-center gap-2.5 ${
+                  acceptedTerms
+                    ? "text-slate-950 bg-green-400 hover:bg-green-300 shadow-xl shadow-green-500/25 cursor-pointer active:scale-95"
+                    : "text-slate-500 bg-white/[0.04] border border-white/10 cursor-not-allowed opacity-60"
+                }`}
               >
                 <Download className="w-5 h-5" />
-                <span>คลิกเพื่อเริ่มดาวน์โหลดทันที (ฟรี 100%)</span>
+                <span>
+                  {acceptedTerms
+                    ? "ยอมรับข้อตกลงและเริ่มดาวน์โหลด (ฟรี 100%)"
+                    : "กรุณาติ๊กยอมรับข้อตกลงก่อนดาวน์โหลด"}
+                </span>
               </button>
             </>
           )}

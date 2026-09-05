@@ -105,10 +105,13 @@ export function triggerFreeDownload(product: DigitalProduct, downloadId?: string
 :: Download ID : ${dlId}
 :: Timestamp   : ${nowStr}
 :: ========================================================================
-:: IMPORTANT SAFETY NOTICE:
-:: 1. Always create a System Restore Point before applying system tweaks.
-:: 2. All commands below are standard, clean Windows tweaks (No malware, No crypto-miners).
-:: 3. A Revert script is included at the bottom of this file.
+:: DISCLAIMER & LIMITATION OF LIABILITY (ข้อตกลงและข้อจำกัดความรับผิดชอบ):
+:: 1. This script is provided "AS IS" without warranty of any kind.
+:: 2. By running this script, you agree that you do so entirely at your own risk.
+:: 3. Pokky Stozy and authors shall NOT be held liable for any damages, hardware failure,
+::    data loss, or system issues. The user assumes all responsibility.
+:: 4. Always create a System Restore Point before tweaking.
+:: 5. A Revert script is included at the bottom of this file.
 :: ========================================================================
 
 title Pokky Stozy - ${product.name} [v${product.version}]
@@ -117,6 +120,7 @@ echo =======================================================================
 echo           POKKY STOZY - WINDOWS & GAMING OPTIMIZER
 echo                   (100% FREE COMMUNITY EDITION)
 echo =======================================================================
+echo [!] DISCLAIMER: Use strictly at your own risk. Author assumes no liability.
 echo.
 echo Package: ${product.name}
 echo Description: ${product.tagline}
