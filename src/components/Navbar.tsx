@@ -3,13 +3,15 @@
 import React from "react";
 
 import Link from "next/link";
+import { Sparkles } from "lucide-react";
 
 interface NavbarProps {
   onSearchChange?: (query: string) => void;
   searchQuery?: string;
+  onOpenAiChat?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = () => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenAiChat }) => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#08090d]/95 backdrop-blur-md font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between gap-3 sm:gap-6">
@@ -52,16 +54,17 @@ export const Navbar: React.FC<NavbarProps> = () => {
           >
             แพ็กเกจทั้งหมด
           </Link>
-          <Link
-            href="/community"
-            className="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-green-400 bg-green-500/10 border border-green-500/25 hover:bg-green-500/20 transition-all flex items-center gap-1.5 shadow-sm group cursor-pointer"
+          <button
+            type="button"
+            onClick={onOpenAiChat}
+            className="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-emerald-300 bg-gradient-to-r from-green-500/15 via-emerald-500/10 to-cyan-500/15 border border-green-500/30 hover:border-green-400/60 hover:from-green-500/25 hover:to-cyan-500/25 transition-all flex items-center gap-1.5 shadow-sm group cursor-pointer"
           >
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400"></span>
+            <Sparkles className="w-3.5 h-3.5 text-green-400 animate-pulse" />
+            <span>ปรึกษา Gemini AI</span>
+            <span className="text-[10px] bg-green-400 text-slate-950 px-1.5 py-0.2 rounded-full font-mono font-bold leading-tight">
+              FREE
             </span>
-            <span>คอมมูนิตี้ (Feed)</span>
-          </Link>
+          </button>
           <Link
             href="/#faqs"
             className="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-colors"

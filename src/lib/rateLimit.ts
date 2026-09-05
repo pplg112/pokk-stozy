@@ -12,6 +12,7 @@ const adminAuthStore = new Map<string, RateLimitRecord>();
 const reviewStore = new Map<string, RateLimitRecord>();
 const downloadStore = new Map<string, RateLimitRecord>();
 const productsStore = new Map<string, RateLimitRecord>();
+const aiChatStore = new Map<string, RateLimitRecord>();
 
 function cleanStore(store: Map<string, RateLimitRecord>) {
   const now = Date.now();
@@ -178,3 +179,30 @@ export function checkProductsRateLimit(ip: string): { allowed: boolean; retryAft
   productsStore.set(ip, record);
   return { allowed: true };
 }
+
+/**
+ * Public Gemini AI Chat Rate Limiting
+ * Rule: Max 25 chat messages per 60 seconds per IP
+ */
+export function checkAiChatRateLimit(ip: string): { allowed: boolean; retryAfterSeconds?: number } {
+  const now = Date.now();
+  const windowMs = 60 * 1000;
+  const maxLimit = 25;
+
+  let record = aiChatStore.get(ip);
+  if (!record || record.resetTime <= now) {
+    ensureStoreBounded(aiChatStore);
+    aiChatStore.set(ip, { count: 1, resetTime: now + windowMs });
+    return { allowed: true };
+  }
+
+  if (record.count >= maxLimit) {
+    const retryAfterSeconds = Math.ceil((record.resetTime - now) / 1000);
+    return { allowed: false, retryAfterSeconds };
+  }
+
+  record.count += 1;
+  aiChatStore.set(ip, record);
+  return { allowed: true };
+}
+

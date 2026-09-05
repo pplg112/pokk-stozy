@@ -6,13 +6,14 @@ import { StoreHero } from "@/components/StoreHero";
 import { ProductCatalog } from "@/components/ProductCatalog";
 import { ProductDetailModal } from "@/components/ProductDetailModal";
 import { FreeDownloadModal } from "@/components/FreeDownloadModal";
+import { GeminiAiChatModal } from "@/components/GeminiAiChatModal";
 import { FaqSection } from "@/components/FaqSection";
 import { Footer } from "@/components/Footer";
 import { CyberBackground } from "@/components/CyberBackground";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { DIGITAL_PRODUCTS } from "@/data/products";
 import { DigitalProduct, DownloadRecord } from "@/types";
-import { ArrowUp, Gamepad2, Flame, ArrowRight, TrendingUp } from "lucide-react";
+import { ArrowUp, Sparkles, Bot, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 export default function HomePage() {
@@ -23,6 +24,8 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [isAiChatOpen, setIsAiChatOpen] = useState(false);
+  const [aiInitialPrompt, setAiInitialPrompt] = useState("");
 
   useEffect(() => {
     const handleScroll = () => {
@@ -133,6 +136,11 @@ export default function HomePage() {
     }
   };
 
+  const handleOpenAiChat = (prompt?: string) => {
+    setAiInitialPrompt(prompt || "");
+    setIsAiChatOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-[#07080c] text-slate-100 flex flex-col font-sans selection:bg-green-400 selection:text-slate-950 relative overflow-x-hidden">
       
@@ -144,13 +152,14 @@ export default function HomePage() {
         <Navbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          onOpenAiChat={() => handleOpenAiChat()}
         />
       </div>
 
       {/* Main Content */}
       <main className="flex-1 relative z-10">
         {/* Vibrant Esports Hero */}
-        <StoreHero />
+        <StoreHero onOpenAiChat={() => handleOpenAiChat()} />
         
         {/* Products Grid */}
         <ProductCatalog
@@ -161,40 +170,72 @@ export default function HomePage() {
           onSearchChange={setSearchQuery}
         />
         
-        {/* Community Highlight Section */}
+        {/* Gemini AI PC Optimizer Assistant Banner */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="relative rounded-3xl bg-gradient-to-r from-[#0d0f1a] via-[#101424] to-[#0d0f1a] border border-green-500/25 p-6 sm:p-10 overflow-hidden shadow-2xl">
+          <div className="relative rounded-3xl bg-gradient-to-r from-[#0d101a] via-[#111728] to-[#0c101c] border border-green-500/30 p-6 sm:p-10 overflow-hidden shadow-2xl shadow-green-950/25">
             <div className="absolute top-0 right-0 w-96 h-96 bg-green-500/10 rounded-full blur-3xl pointer-events-none" />
-            
-            <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-6">
-              <div className="space-y-3 text-center lg:text-left">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-xs font-mono font-bold">
-                  <Flame className="w-3.5 h-3.5" />
-                  <span>POKKY GAMING COMMUNITY</span>
+            <div className="absolute bottom-0 left-0 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+              <div className="space-y-4 text-center lg:text-left max-w-2xl">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-green-500/15 via-emerald-500/10 to-cyan-500/15 border border-green-500/30 text-green-300 text-xs font-mono font-bold shadow-sm">
+                  <Sparkles className="w-3.5 h-3.5 text-green-400 animate-pulse" />
+                  <span>POKKY GEMINI AI • ผู้ช่วยปรับแต่งคอมพิวเตอร์อัจฉริยะ</span>
                 </div>
-                <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                  ฟีดคอมมูนิตี้ชาวแก๊งค์ & ผลเทส FPS จริง
+                
+                <h3 className="text-2xl sm:text-4xl font-black text-white tracking-tight leading-snug">
+                  ไม่แน่ใจว่าใช้สคริปต์ไหนดี?{" "}
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-300 to-cyan-400">
+                    ปรึกษา Gemini AI ได้ฟรี
+                  </span>
                 </h3>
-                <p className="text-slate-300 text-xs sm:text-sm max-w-xl leading-relaxed">
-                  ดูผลเปรียบเทียบเฟรมเรต Before/After จากเพื่อนๆ ที่ใช้งานสคริปต์จริง แชร์การตั้งค่า และดาวน์โหลดสคริปต์ตามเพื่อนได้ทันที
+
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                  ถาม AI ช่วยวิเคราะห์อาการคอมกระตุก เฟรมดรอปใน Valorant หรือ FiveM, ปัญหาเน็ตแกว่งปิงสูง, หรืออาการเมาส์หน่วง ระบบจะคัดสรรสคริปต์ที่ตรงจุดที่สุดให้ดาวน์โหลดทันที
                 </p>
+
+                {/* Popular Quick Prompt Chips */}
+                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 pt-1">
+                  <button
+                    onClick={() => handleOpenAiChat("เล่น Valorant แล้วเฟรมตก เล็งยิงไม่ค่อยคม แนะนำสคริปต์ปรับแต่งหน่อยครับ")}
+                    className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-green-500/20 border border-white/10 hover:border-green-500/40 text-xs text-slate-300 hover:text-green-300 transition-all cursor-pointer flex items-center gap-1.5 group active:scale-95"
+                  >
+                    <span>⚡ ดัน FPS Valorant</span>
+                  </button>
+                  <button
+                    onClick={() => handleOpenAiChat("เล่น FiveM ขับรถเร็วๆ แล้วแมพโหลดไม่ทัน เฟรมดรอป มีตัวช่วยมั้ยครับ")}
+                    className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-green-500/20 border border-white/10 hover:border-green-500/40 text-xs text-slate-300 hover:text-green-300 transition-all cursor-pointer flex items-center gap-1.5 group active:scale-95"
+                  >
+                    <span>🚗 แก้ FiveM กระตุกในเมือง</span>
+                  </button>
+                  <button
+                    onClick={() => handleOpenAiChat("เล่นเกมออนไลน์แล้วปิงแกว่ง Packet loss ขึ้นบ่อย แก้ยังไงดีครับ")}
+                    className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-green-500/20 border border-white/10 hover:border-green-500/40 text-xs text-slate-300 hover:text-green-300 transition-all cursor-pointer flex items-center gap-1.5 group active:scale-95"
+                  >
+                    <span>🌐 ลด Ping & Packet Loss</span>
+                  </button>
+                  <button
+                    onClick={() => handleOpenAiChat("Windows 11 แรม 8GB-16GB รู้สึกเครื่องหน่วงและกินแรมเยอะ แนะนำตัวล้างระบบหน่อยครับ")}
+                    className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-green-500/20 border border-white/10 hover:border-green-500/40 text-xs text-slate-300 hover:text-green-300 transition-all cursor-pointer flex items-center gap-1.5 group active:scale-95"
+                  >
+                    <span>🧹 เคลียร์ RAM Win 11</span>
+                  </button>
+                </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0">
-                <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-black/40 border border-white/10 font-mono text-xs">
-                  <TrendingUp className="w-4 h-4 text-green-400" />
-                  <span className="text-white font-bold">+145 FPS</span>
-                  <span className="text-slate-400">(เฉลี่ย)</span>
-                </div>
-
-                <Link
-                  href="/community"
-                  className="py-3 px-6 rounded-2xl bg-green-400 hover:bg-green-300 text-slate-950 font-mono font-bold text-xs sm:text-sm transition-all flex items-center gap-2 shadow-xl shadow-green-500/25 hover:scale-105 active:scale-95 cursor-pointer"
+              <div className="flex flex-col items-center sm:items-end gap-3 shrink-0">
+                <button
+                  onClick={() => handleOpenAiChat()}
+                  className="py-3.5 px-7 rounded-2xl bg-gradient-to-r from-green-400 via-emerald-400 to-green-300 hover:from-green-300 hover:to-emerald-200 text-slate-950 font-mono font-bold text-sm transition-all flex items-center gap-2.5 shadow-xl shadow-green-500/25 hover:scale-105 active:scale-95 cursor-pointer"
                 >
-                  <Gamepad2 className="w-4 h-4" />
-                  <span>เปิดดูกระดานฟีดชุมชน</span>
+                  <Bot className="w-5 h-5" />
+                  <span>เริ่มคุยกับ Gemini AI</span>
                   <ArrowRight className="w-4 h-4" />
-                </Link>
+                </button>
+                <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                  <span>AI พร้อมให้คำปรึกษาตลอด 24 ชั่วโมง</span>
+                </div>
               </div>
             </div>
           </div>
@@ -225,6 +266,16 @@ export default function HomePage() {
         onDownloadComplete={handleDownloadComplete}
       />
 
+      {/* Gemini AI Chat Assistant Modal */}
+      <GeminiAiChatModal
+        isOpen={isAiChatOpen}
+        onClose={() => setIsAiChatOpen(false)}
+        allProducts={productsList}
+        onDownloadProduct={handleStartDownload}
+        onViewProduct={handleOpenProduct}
+        initialPrompt={aiInitialPrompt}
+      />
+
       {/* Cyber Esports Loading Screen */}
       {isLoading && (
         <LoadingScreen
@@ -233,14 +284,36 @@ export default function HomePage() {
         />
       )}
 
+      {/* Floating Gemini AI Trigger Button */}
+      <button
+        onClick={() => handleOpenAiChat()}
+        className="fixed bottom-6 right-6 z-30 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-gradient-to-r from-[#0d131f] via-[#101b2b] to-[#0c1824] border border-green-500/40 hover:border-green-400 text-white shadow-[0_0_25px_rgba(34,197,94,0.3)] hover:shadow-[0_0_35px_rgba(34,197,94,0.5)] backdrop-blur-md transition-all duration-300 hover:scale-105 cursor-pointer group active:scale-95"
+        title="ปรึกษาและถามปัญหากับ Pokky Gemini AI"
+      >
+        <div className="relative">
+          <Sparkles className="w-5 h-5 text-green-400 animate-pulse" />
+          <span className="absolute -top-1 -right-1 flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400"></span>
+          </span>
+        </div>
+        <div className="flex flex-col text-left">
+          <span className="text-xs font-bold text-white group-hover:text-green-300 transition-colors flex items-center gap-1">
+            <span>ถาม Gemini AI</span>
+            <span className="text-[9px] bg-green-400 text-black px-1 rounded font-mono font-black">PRO</span>
+          </span>
+          <span className="text-[10px] text-slate-400 font-mono">วิเคราะห์สเปก & สคริปต์ฟรี</span>
+        </div>
+      </button>
+
       {/* Floating Back to Top Button */}
       {showBackToTop && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="fixed bottom-6 right-6 z-30 p-3 sm:p-3.5 rounded-2xl bg-black/80 hover:bg-green-400 border border-white/20 hover:border-green-400 text-white hover:text-slate-950 shadow-2xl backdrop-blur-md transition-all duration-300 hover:scale-110 cursor-pointer group active:scale-95"
+          className="fixed bottom-22 right-6 z-30 p-3 sm:p-3 rounded-2xl bg-black/80 hover:bg-green-400 border border-white/20 hover:border-green-400 text-white hover:text-slate-950 shadow-2xl backdrop-blur-md transition-all duration-300 hover:scale-110 cursor-pointer group active:scale-95"
           title="กลับขึ้นด้านบน"
         >
-          <ArrowUp className="w-5 h-5 transition-transform group-hover:-translate-y-0.5" />
+          <ArrowUp className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
         </button>
       )}
 

@@ -1,19 +1,16 @@
 import fs from "fs";
 import path from "path";
 import { RealProduct, INITIAL_REAL_PRODUCTS } from "@/data/realProducts";
-import { Review, CommunityPost } from "@/types";
-import { INITIAL_COMMUNITY_POSTS } from "@/data/communitySeed";
+import { Review } from "@/types";
 import { getSupabase } from "./supabase";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const DB_FILE = path.join(DATA_DIR, "products.json");
 const REVIEWS_FILE = path.join(DATA_DIR, "reviews.json");
-const COMMUNITY_POSTS_FILE = path.join(DATA_DIR, "community_posts.json");
 
 // In-memory cache for fast lookups & serverless persistence during instance lifetime
 let memoryCache: RealProduct[] | null = null;
 let reviewsCache: Review[] | null = null;
-let communityPostsCache: CommunityPost[] | null = null;
 const MAX_BLOB_STORAGE = 15;
 const fileStorage = new Map<string, { filename: string; content: string }>();
 
@@ -112,48 +109,6 @@ function persistReviews(reviews: Review[]) {
   } catch {
     // In serverless instances where FS is read-only, reviewsCache retains state
   }
-}
-
-function ensureCommunityPostsFile(): CommunityPost[] {
-  if (communityPostsCache !== null) {
-    return communityPostsCache;
-  }
-
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      try {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-      } catch {}
-    }
-
-    if (fs.existsSync(COMMUNITY_POSTS_FILE)) {
-      const raw = fs.readFileSync(COMMUNITY_POSTS_FILE, "utf-8");
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        communityPostsCache = parsed;
-        return communityPostsCache;
-      }
-    }
-
-    communityPostsCache = [...INITIAL_COMMUNITY_POSTS];
-    try {
-      fs.writeFileSync(COMMUNITY_POSTS_FILE, JSON.stringify(communityPostsCache, null, 2), "utf-8");
-    } catch {}
-    return communityPostsCache;
-  } catch {
-    communityPostsCache = [...INITIAL_COMMUNITY_POSTS];
-    return communityPostsCache;
-  }
-}
-
-function persistCommunityPosts(posts: CommunityPost[]) {
-  communityPostsCache = posts;
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(COMMUNITY_POSTS_FILE, JSON.stringify(posts, null, 2), "utf-8");
-  } catch {}
 }
 
 function calculateProductRating(productId: string, reviews: Review[]) {
@@ -627,138 +582,5 @@ export const db = {
 
   getUploadedBlob(fileId: string) {
     return fileStorage.get(fileId) || null;
-  },
-
-  // --- Pokky Esports Community Feed ---
-  async getCommunityPosts(tag?: string): Promise<CommunityPost[]> {
-    const supabase = getSupabase();
-    if (supabase) {
-      try {
-        let query = supabase.from("community_posts").select("*");
-        if (tag && tag !== "all") {
-          query = query.eq("gameTag", tag);
-        }
-        const { data, error } = await query.order("isPinned", { ascending: false }).order("createdAt", { ascending: false });
-        if (!error && data && data.length > 0) {
-          return data as CommunityPost[];
-        }
-      } catch {}
-    }
-
-    const posts = ensureCommunityPostsFile();
-    let result = [...posts];
-    if (tag && tag !== "all") {
-      result = result.filter((p) => p.gameTag?.toLowerCase() === tag.toLowerCase());
-    }
-    return result.sort((a, b) => {
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-  },
-
-  async getCommunityPostById(id: string): Promise<CommunityPost | undefined> {
-    const posts = ensureCommunityPostsFile();
-    return posts.find((p) => p.id === id);
-  },
-
-  async createCommunityPost(data: Omit<CommunityPost, "id" | "createdAt" | "likes" | "commentsCount">): Promise<CommunityPost> {
-    const newPost: CommunityPost = {
-      ...data,
-      id: `post-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      likes: 0,
-      likedBy: [],
-      commentsCount: 0,
-      isPinned: false,
-      createdAt: new Date().toISOString(),
-    };
-
-    const supabase = getSupabase();
-    if (supabase) {
-      try {
-        const { data: inserted, error } = await supabase.from("community_posts").insert(newPost).select().single();
-        if (!error && inserted) {
-          const posts = ensureCommunityPostsFile();
-          posts.unshift(inserted as CommunityPost);
-          persistCommunityPosts(posts);
-          return inserted as CommunityPost;
-        }
-      } catch {}
-    }
-
-    const posts = ensureCommunityPostsFile();
-    posts.unshift(newPost);
-    persistCommunityPosts(posts);
-    return newPost;
-  },
-
-  async toggleLikePost(postId: string, userId: string): Promise<{ likes: number; isLiked: boolean }> {
-    const posts = ensureCommunityPostsFile();
-    const post = posts.find((p) => p.id === postId);
-    if (!post) return { likes: 0, isLiked: false };
-
-    post.likedBy = post.likedBy || [];
-    const index = post.likedBy.indexOf(userId);
-    let isLiked = false;
-
-    if (index === -1) {
-      post.likedBy.push(userId);
-      post.likes = (post.likes || 0) + 1;
-      isLiked = true;
-    } else {
-      post.likedBy.splice(index, 1);
-      post.likes = Math.max(0, (post.likes || 1) - 1);
-      isLiked = false;
-    }
-
-    persistCommunityPosts(posts);
-
-    const supabase = getSupabase();
-    if (supabase) {
-      try {
-        await supabase
-          .from("community_posts")
-          .update({ likes: post.likes, likedBy: post.likedBy })
-          .eq("id", postId);
-      } catch {}
-    }
-
-    return { likes: post.likes, isLiked };
-  },
-
-  async deleteCommunityPost(id: string): Promise<boolean> {
-    const posts = ensureCommunityPostsFile();
-    const initialLen = posts.length;
-    const filtered = posts.filter((p) => p.id !== id);
-    if (filtered.length !== initialLen) {
-      persistCommunityPosts(filtered);
-
-      const supabase = getSupabase();
-      if (supabase) {
-        try {
-          await supabase.from("community_posts").delete().eq("id", id);
-        } catch {}
-      }
-      return true;
-    }
-    return false;
-  },
-
-  async pinCommunityPost(id: string, isPinned: boolean): Promise<boolean> {
-    const posts = ensureCommunityPostsFile();
-    const post = posts.find((p) => p.id === id);
-    if (post) {
-      post.isPinned = isPinned;
-      persistCommunityPosts(posts);
-
-      const supabase = getSupabase();
-      if (supabase) {
-        try {
-          await supabase.from("community_posts").update({ isPinned }).eq("id", id);
-        } catch {}
-      }
-      return true;
-    }
-    return false;
   }
 };

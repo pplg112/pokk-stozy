@@ -1,9 +1,13 @@
 "use client";
 
 import React from "react";
-import { ShieldCheck, Download, RotateCcw, ArrowDown, HelpCircle } from "lucide-react";
+import { ShieldCheck, Download, RotateCcw, ArrowDown, HelpCircle, Sparkles } from "lucide-react";
 
-export const StoreHero: React.FC = () => {
+interface StoreHeroProps {
+  onOpenAiChat?: () => void;
+}
+
+export const StoreHero: React.FC<StoreHeroProps> = ({ onOpenAiChat }) => {
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
@@ -45,6 +49,13 @@ export const StoreHero: React.FC = () => {
         >
           <ArrowDown className="w-4 h-4" />
           <span>เลือกดูแพ็กเกจทั้งหมด</span>
+        </button>
+        <button
+          onClick={onOpenAiChat}
+          className="py-2.5 sm:py-3 px-4 sm:px-5 rounded-xl font-bold text-xs sm:text-sm font-sans text-emerald-300 bg-gradient-to-r from-green-500/15 via-emerald-500/10 to-cyan-500/15 hover:from-green-500/25 hover:to-cyan-500/25 border border-green-500/40 hover:border-green-400 transition-all flex items-center gap-2 cursor-pointer active:scale-95 shadow-md shadow-green-950/30"
+        >
+          <Sparkles className="w-4 h-4 text-green-400 animate-pulse" />
+          <span>ปรึกษา Gemini AI</span>
         </button>
         <button
           onClick={() => scrollToSection("faqs")}
