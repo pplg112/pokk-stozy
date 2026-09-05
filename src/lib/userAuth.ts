@@ -13,6 +13,10 @@ export interface DiscordConfig {
 
 import os from "os";
 
+// Embedded permanent Discord OAuth credentials requested by owner ("ฝังไปเลยไม่ต้องตั้งค่าตลอด")
+const EMBEDDED_DISCORD_CLIENT_ID = "1545830613741871114";
+const EMBEDDED_DISCORD_CLIENT_SECRET = "EOZcTq4D-9wI0eS0BM2e5Pm1YLkyKfHX";
+
 const DATA_DIR = path.join(process.cwd(), "data");
 const DISCORD_CONFIG_FILE = path.join(DATA_DIR, "discord_config.json");
 const TMP_DISCORD_CONFIG_FILE = path.join(os.tmpdir(), "discord_config.json");
@@ -48,6 +52,10 @@ export function getDiscordConfig(): DiscordConfig {
       }
     } catch {}
   }
+
+  // 3. Fallback to embedded credentials permanently
+  if (!clientId) clientId = EMBEDDED_DISCORD_CLIENT_ID;
+  if (!clientSecret) clientSecret = EMBEDDED_DISCORD_CLIENT_SECRET;
 
   cachedConfig = { clientId, clientSecret };
   return cachedConfig;
