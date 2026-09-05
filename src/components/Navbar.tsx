@@ -34,6 +34,28 @@ export const Navbar: React.FC<NavbarProps> = () => {
           </div>
         </a>
 
+        {/* Center Navigation Links */}
+        <nav className="hidden md:flex items-center gap-1 sm:gap-2">
+          <a
+            href="#"
+            className="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+          >
+            หน้าแรก
+          </a>
+          <a
+            href="#products"
+            className="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+          >
+            แพ็กเกจทั้งหมด
+          </a>
+          <a
+            href="#faqs"
+            className="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+          >
+            คำถามที่พบบ่อย
+          </a>
+        </nav>
+
         {/* Right Actions */}
         <div className="flex items-center gap-3 shrink-0">
           <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-xs font-mono text-emerald-300">

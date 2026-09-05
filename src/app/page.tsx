@@ -12,6 +12,7 @@ import { CyberBackground } from "@/components/CyberBackground";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { DIGITAL_PRODUCTS } from "@/data/products";
 import { DigitalProduct, DownloadRecord } from "@/types";
+import { ArrowUp } from "lucide-react";
 
 export default function HomePage() {
   const [productsList, setProductsList] = useState<DigitalProduct[]>(DIGITAL_PRODUCTS);
@@ -20,6 +21,15 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 350);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const refreshProducts = async () => {
     const startTime = Date.now();
@@ -144,6 +154,17 @@ export default function HomePage() {
           isFadingOut={isFadingOut}
           subMessage="ESPORTS SYSTEM OPTIMIZER"
         />
+      )}
+
+      {/* Floating Back to Top Button */}
+      {showBackToTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-6 right-6 z-30 p-3 sm:p-3.5 rounded-2xl bg-black/80 hover:bg-green-400 border border-white/20 hover:border-green-400 text-white hover:text-slate-950 shadow-2xl backdrop-blur-md transition-all duration-300 hover:scale-110 cursor-pointer group active:scale-95"
+          title="กลับขึ้นด้านบน"
+        >
+          <ArrowUp className="w-5 h-5 transition-transform group-hover:-translate-y-0.5" />
+        </button>
       )}
 
     </div>

@@ -15,7 +15,10 @@ import {
   Wifi, 
   Activity,
   SlidersHorizontal,
-  FolderOpen
+  FolderOpen,
+  Search,
+  X,
+  RotateCcw
 } from "lucide-react";
 
 const ITEMS_PER_PAGE = 9;
@@ -108,11 +111,63 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   return (
     <section id="products" className="py-6 sm:py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
+      {/* Search Input & Quick Tags */}
+      <div className="mb-6 space-y-3">
+        <div className="relative max-w-2xl mx-auto">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+            <Search className="w-5 h-5 text-green-400" />
+          </div>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              onSearchChange(e.target.value);
+              setCurrentPage(1);
+            }}
+            placeholder="ค้นหาชื่อแพ็กเกจ, หมวดหมู่, สคริปต์ เช่น Valorant, Latency, GPU, Windows..."
+            className="w-full pl-11 pr-10 py-3 sm:py-3.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] focus:bg-black/90 border border-white/15 focus:border-green-400 focus:shadow-[0_0_25px_rgba(74,222,128,0.25)] text-sm sm:text-base text-white placeholder-slate-500 font-sans focus:outline-none transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                onSearchChange("");
+                setCurrentPage(1);
+              }}
+              className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-white transition-colors cursor-pointer"
+              title="ล้างคำค้นหา"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+
+        {/* Quick Search Suggestions */}
+        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-xs font-mono text-slate-400">
+          <span className="text-slate-500">คำค้นยอดนิยม:</span>
+          {["Valorant", "GPU", "Latency", "Windows 11", "RAM", "Debloat"].map((tag) => (
+            <button
+              key={tag}
+              onClick={() => {
+                onSearchChange(tag);
+                setCurrentPage(1);
+              }}
+              className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                searchQuery.toLowerCase() === tag.toLowerCase()
+                  ? "bg-green-500/20 text-green-300 border-green-500/40 font-semibold"
+                  : "bg-white/[0.03] hover:bg-white/[0.08] text-slate-300 border-white/10"
+              }`}
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Category Pills & Sorting */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/10">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mb-4 pb-4 border-b border-white/10">
         
-        {/* Category Tabs */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Category Tabs (Horizontally scrollable on mobile) */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full lg:flex-wrap">
           {categories.map((cat) => {
             const isActive = selectedCategory === cat.id;
             const Icon = cat.icon;
@@ -124,7 +179,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
               <button
                 key={cat.id}
                 onClick={() => handleCategoryChange(cat.id)}
-                className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                   isActive
                     ? "bg-green-500/20 text-green-300 border-2 border-green-400/80 shadow-[0_0_20px_rgba(74,222,128,0.25)]"
                     : "bg-white/[0.04] text-slate-300 hover:text-white hover:bg-white/[0.08] border border-white/10 hover:border-white/20"
@@ -160,6 +215,28 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
         </div>
 
       </div>
+
+      {/* Search & Filter Feedback Banner */}
+      {(searchQuery || selectedCategory !== "all") && (
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6 p-3 sm:p-3.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs sm:text-sm font-sans">
+          <div className="text-slate-300">
+            พบ <span className="font-bold text-green-400 font-mono text-sm sm:text-base">{filteredProducts.length}</span> แพ็กเกจ
+            {searchQuery && <span> จากการค้นหา &quot;<span className="text-white font-semibold">{searchQuery}</span>&quot;</span>}
+            {selectedCategory !== "all" && <span> ในหมวดหมู่ &quot;<span className="text-white font-semibold">{categories.find(c => c.id === selectedCategory)?.label}</span>&quot;</span>}
+          </div>
+          <button
+            onClick={() => {
+              onSearchChange("");
+              setSelectedCategory("all");
+              setCurrentPage(1);
+            }}
+            className="flex items-center gap-1 text-xs font-mono text-slate-400 hover:text-green-300 transition-colors cursor-pointer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>ล้างตัวกรองทั้งหมด</span>
+          </button>
+        </div>
+      )}
 
       {/* Leaderboard Monetization Slot */}
       <AdBanner slot="leaderboard" className="mb-6" />
@@ -233,17 +310,28 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
           )}
         </>
       ) : (
-        <div className="p-16 text-center rounded-2xl bg-white/[0.03] border border-white/10 text-base sm:text-lg text-slate-300">
-          <p className="mb-3 font-semibold">ไม่พบไฟล์ที่ตรงกับคำค้นหา "{searchQuery}"</p>
+        <div className="py-16 px-4 text-center rounded-2xl bg-white/[0.02] border border-white/10 max-w-lg mx-auto my-6 space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto text-slate-400">
+            <FolderOpen className="w-8 h-8 text-slate-500" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white font-sans">
+              ไม่พบแพ็กเกจที่ตรงกับเงื่อนไข
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-xs mx-auto">
+              ลองพิมพ์คำค้นหาอื่น หรือกดปุ่มด้านล่างเพื่อแสดงแพ็กเกจทั้งหมดที่มีในระบบ
+            </p>
+          </div>
           <button
             onClick={() => {
               onSearchChange("");
               setSelectedCategory("all");
               setCurrentPage(1);
             }}
-            className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-semibold transition-colors cursor-pointer"
+            className="py-2.5 px-5 rounded-xl text-xs sm:text-sm font-semibold font-mono text-slate-950 bg-green-400 hover:bg-green-300 transition-all inline-flex items-center gap-2 cursor-pointer shadow-lg shadow-green-500/20 active:scale-95"
           >
-            ล้างตัวกรองทั้งหมด
+            <RotateCcw className="w-4 h-4" />
+            <span>แสดงแพ็กเกจทั้งหมด</span>
           </button>
         </div>
       )}

@@ -131,6 +131,26 @@ export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
           </button>
         </div>
 
+        {/* Step Progress Indicator */}
+        <div className="px-5 sm:px-6 pt-3 pb-1 border-b border-white/5">
+          <div className="flex items-center justify-between max-w-sm mx-auto text-xs font-mono">
+            <div className={`flex items-center gap-1.5 ${step === "initial" ? "text-green-400 font-bold" : step === "preparing" || step === "completed" ? "text-emerald-300" : "text-slate-500"}`}>
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] ${step === "initial" ? "bg-green-400 text-slate-950 font-bold" : "bg-white/10 text-slate-300"}`}>1</span>
+              <span>ตรวจสอบ</span>
+            </div>
+            <div className="h-0.5 flex-1 mx-2 bg-white/10" />
+            <div className={`flex items-center gap-1.5 ${step === "preparing" ? "text-green-400 font-bold" : step === "completed" ? "text-emerald-300" : "text-slate-500"}`}>
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] ${step === "preparing" ? "bg-green-400 text-slate-950 font-bold" : "bg-white/10 text-slate-300"}`}>2</span>
+              <span>จัดเตรียม</span>
+            </div>
+            <div className="h-0.5 flex-1 mx-2 bg-white/10" />
+            <div className={`flex items-center gap-1.5 ${step === "completed" ? "text-green-400 font-bold" : "text-slate-500"}`}>
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] ${step === "completed" ? "bg-green-400 text-slate-950 font-bold" : "bg-white/10 text-slate-300"}`}>3</span>
+              <span>ดาวน์โหลด</span>
+            </div>
+          </div>
+        </div>
+
         {/* Modal Body */}
         <div className="p-5 sm:p-6 space-y-4 overflow-y-auto">
           
@@ -268,12 +288,16 @@ export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
               </div>
 
               {/* Quick Steps */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-white/[0.03] border border-white/10 text-left text-sm sm:text-base font-sans space-y-3">
-                <div className="text-green-400 font-bold font-mono text-base">ขั้นตอนถัดไปเพื่อเริ่มใช้งาน:</div>
-                <div className="text-slate-200 space-y-2 text-sm sm:text-base leading-relaxed">
-                  <div>1. เปิดโฟลเดอร์ <strong>Downloads</strong> ในเครื่องคอมพิวเตอร์ของคุณ</div>
-                  <div>2. คลิกขวาที่ไฟล์สคริปต์ แล้วเลือก <strong>"Run as administrator"</strong></div>
-                  <div>3. รีสตาร์ตเครื่องคอมพิวเตอร์ 1 ครั้งเพื่อใช้งานการปรับแต่งอย่างเต็มประสิทธิภาพ</div>
+              <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 text-left text-xs sm:text-sm font-sans space-y-2.5">
+                <div className="text-green-400 font-bold font-mono text-xs sm:text-sm flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>4 ขั้นตอนง่ายๆ เพื่อเริ่มใช้งาน:</span>
+                </div>
+                <div className="text-slate-200 space-y-1.5 text-xs sm:text-sm leading-relaxed">
+                  <div>1. เปิดโฟลเดอร์ <strong>Downloads</strong> และแตกไฟล์ .zip ที่ได้รับ</div>
+                  <div>2. คลิกขวาที่ไฟล์สคริปต์ แล้วเลือก <strong>&quot;Run as administrator&quot;</strong></div>
+                  <div>3. รีสตาร์ตเครื่องคอมพิวเตอร์ 1 ครั้ง เพื่อให้ระบบบันทึกค่าใหม่อย่างสมบูรณ์</div>
+                  <div>4. หากต้องการกลับไปใช้ค่าเดิม สามารถรันไฟล์ <strong>Revert Script</strong> ได้ตลอดเวลา</div>
                 </div>
               </div>
 
