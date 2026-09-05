@@ -2,6 +2,8 @@
 
 import React from "react";
 
+import Link from "next/link";
+
 interface NavbarProps {
   onSearchChange?: (query: string) => void;
   searchQuery?: string;
@@ -13,7 +15,7 @@ export const Navbar: React.FC<NavbarProps> = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between gap-3 sm:gap-6">
         
         {/* Brand Logo with User's Official Artwork & Site Name */}
-        <a href="#" className="flex items-center gap-2.5 sm:gap-3 shrink-0 group py-1">
+        <Link href="/" className="flex items-center gap-2.5 sm:gap-3 shrink-0 group py-1">
           <img
             src="/logo.png"
             alt="Pokky Stozy"
@@ -34,28 +36,38 @@ export const Navbar: React.FC<NavbarProps> = () => {
               OPTIMIZE • SETTING • STORE
             </span>
           </div>
-        </a>
+        </Link>
 
         {/* Center Navigation Links */}
         <nav className="hidden md:flex items-center gap-1 sm:gap-2">
-          <a
-            href="#"
+          <Link
+            href="/"
             className="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
           >
             หน้าแรก
-          </a>
-          <a
-            href="#products"
+          </Link>
+          <Link
+            href="/#products"
             className="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
           >
             แพ็กเกจทั้งหมด
-          </a>
-          <a
-            href="#faqs"
+          </Link>
+          <Link
+            href="/community"
+            className="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-green-400 bg-green-500/10 border border-green-500/25 hover:bg-green-500/20 transition-all flex items-center gap-1.5 shadow-sm group cursor-pointer"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400"></span>
+            </span>
+            <span>คอมมูนิตี้ (Feed)</span>
+          </Link>
+          <Link
+            href="/#faqs"
             className="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
           >
             คำถามที่พบบ่อย
-          </a>
+          </Link>
         </nav>
 
         {/* Right Actions */}

@@ -12,7 +12,8 @@ import { CyberBackground } from "@/components/CyberBackground";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { DIGITAL_PRODUCTS } from "@/data/products";
 import { DigitalProduct, DownloadRecord } from "@/types";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Gamepad2, Flame, ArrowRight, TrendingUp } from "lucide-react";
+import Link from "next/link";
 
 export default function HomePage() {
   const [productsList, setProductsList] = useState<DigitalProduct[]>([]);
@@ -160,6 +161,45 @@ export default function HomePage() {
           onSearchChange={setSearchQuery}
         />
         
+        {/* Community Highlight Section */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="relative rounded-3xl bg-gradient-to-r from-[#0d0f1a] via-[#101424] to-[#0d0f1a] border border-green-500/25 p-6 sm:p-10 overflow-hidden shadow-2xl">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-green-500/10 rounded-full blur-3xl pointer-events-none" />
+            
+            <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-6">
+              <div className="space-y-3 text-center lg:text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-xs font-mono font-bold">
+                  <Flame className="w-3.5 h-3.5" />
+                  <span>POKKY GAMING COMMUNITY</span>
+                </div>
+                <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                  ฟีดคอมมูนิตี้ชาวแก๊งค์ & ผลเทส FPS จริง
+                </h3>
+                <p className="text-slate-300 text-xs sm:text-sm max-w-xl leading-relaxed">
+                  ดูผลเปรียบเทียบเฟรมเรต Before/After จากเพื่อนๆ ที่ใช้งานสคริปต์จริง แชร์การตั้งค่า และดาวน์โหลดสคริปต์ตามเพื่อนได้ทันที
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-black/40 border border-white/10 font-mono text-xs">
+                  <TrendingUp className="w-4 h-4 text-green-400" />
+                  <span className="text-white font-bold">+145 FPS</span>
+                  <span className="text-slate-400">(เฉลี่ย)</span>
+                </div>
+
+                <Link
+                  href="/community"
+                  className="py-3 px-6 rounded-2xl bg-green-400 hover:bg-green-300 text-slate-950 font-mono font-bold text-xs sm:text-sm transition-all flex items-center gap-2 shadow-xl shadow-green-500/25 hover:scale-105 active:scale-95 cursor-pointer"
+                >
+                  <Gamepad2 className="w-4 h-4" />
+                  <span>เปิดดูกระดานฟีดชุมชน</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* FAQ Section */}
         <FaqSection />
       </main>

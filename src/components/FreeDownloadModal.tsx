@@ -22,7 +22,7 @@ interface FreeDownloadModalProps {
   isOpen: boolean;
   onClose: () => void;
   product: DigitalProduct | null;
-  onDownloadComplete: (record: DownloadRecord) => void;
+  onDownloadComplete?: (record: DownloadRecord) => void;
 }
 
 export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
@@ -54,7 +54,7 @@ export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
     // 2. Log local download record
     const record = recordFreeDownload(prod);
     setDownloadId(record.downloadId);
-    onDownloadComplete(record);
+    onDownloadComplete?.(record);
     setStep("completed");
 
     // 3. Optional monetization SmartLink

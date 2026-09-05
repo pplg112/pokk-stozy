@@ -27,7 +27,8 @@ import {
   Loader2,
   Bot,
   Key,
-  Cpu
+  Cpu,
+  Gamepad2
 } from "lucide-react";
 
 const CATEGORY_COVER_PRESETS: Record<string, string> = {
@@ -711,6 +712,16 @@ export default function AdminDashboardPage() {
                 {geminiApiKey ? "เปิดใช้งานแล้ว" : "ฟรี Key"}
               </span>
             </button>
+
+            <a
+              href="/community"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-green-400 hover:text-green-300 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 transition-colors"
+            >
+              <Gamepad2 className="w-4 h-4" />
+              <span className="hidden md:inline">ฟีดคอมมูนิตี้</span>
+            </a>
 
             <a
               href="/"
