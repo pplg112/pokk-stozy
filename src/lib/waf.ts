@@ -174,10 +174,10 @@ export function evaluateWafRules(
   const userAgent = request.headers.get("user-agent") || "";
   const { pathname, search } = request.nextUrl;
 
-  // Check Honeypot Traps -> Instant 2h IP Jail
+  // Check Honeypot Traps -> 10m IP Jail (Strict honeypot probes only)
   for (const trap of HONEYPOT_TRAP_ROUTES) {
     if (trap.test(pathname)) {
-      jailIp(clientIp, `Honeypot trap triggered on ${pathname}`, 7200000); // 2 hours
+      jailIp(clientIp, `Honeypot trap triggered on ${pathname}`, 600000); // 10 minutes
       return {
         blocked: true,
         reason: "Access Denied: Security Violation",
@@ -186,9 +186,8 @@ export function evaluateWafRules(
     }
   }
 
-  // Check Malicious User-Agents
+  // Check Malicious User-Agents -> Block request immediately with 403 (No IP ban to avoid blocking shared/CGNAT IPs)
   if (userAgent && MALICIOUS_USER_AGENTS.some((pattern) => pattern.test(userAgent))) {
-    jailIp(clientIp, `Malicious User-Agent: ${userAgent.slice(0, 50)}`, 3600000); // 1 hour ban
     return {
       blocked: true,
       reason: "Forbidden: Automated scanner or exploitation tool detected.",
@@ -211,7 +210,6 @@ export function evaluateWafRules(
 
   for (const pattern of ATTACK_PATTERNS) {
     if (pattern.test(decodedUrl) || pattern.test(search)) {
-      jailIp(clientIp, `Attack payload detected: ${pattern.toString()}`, 7200000); // 2 hours ban
       return {
         blocked: true,
         reason: "Forbidden: Malicious payload pattern detected.",

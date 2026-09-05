@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Prototype Pollution Defense
     if (containsPrototypePollution(body)) {
-      jailIp(ip, "Prototype Pollution Attempt", 86400000);
+      jailIp(ip, "Prototype Pollution Attempt", 600000); // 10 minutes
       return NextResponse.json(
         { success: false, error: "Invalid payload: Security violation" },
         { status: 400 }
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     // 3. Honeypot Anti-Bot Trap
     // Real humans will not fill website_confirm (hidden field). Automated bots fill it.
     if (website_confirm && typeof website_confirm === "string" && website_confirm.trim().length > 0) {
-      jailIp(ip, "Bot detected via Review Honeypot Trap", 86400000);
+      jailIp(ip, "Bot detected via Review Honeypot Trap", 600000); // 10 minutes
       return NextResponse.json(
         { success: false, error: "Bot activity detected" },
         { status: 400 }
