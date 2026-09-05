@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { DigitalProduct, DownloadRecord } from "@/types";
+import { DigitalProduct, DownloadRecord, DiscordUser } from "@/types";
 import { recordFreeDownload } from "@/utils/storage";
 import { ADS_CONFIG } from "@/config/ads";
 import { AdBanner } from "./AdBanner";
+import { DiscordIcon } from "@/components/icons/DiscordIcon";
 import { 
   X, 
   Download, 
@@ -15,13 +16,15 @@ import {
   Sparkles,
   Loader2,
   AlertTriangle,
-  ShieldAlert
+  ShieldAlert,
+  LogIn
 } from "lucide-react";
 
 interface FreeDownloadModalProps {
   isOpen: boolean;
   onClose: () => void;
   product: DigitalProduct | null;
+  currentUser?: DiscordUser | null;
   onDownloadComplete?: (record: DownloadRecord) => void;
 }
 
@@ -29,15 +32,49 @@ export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
   isOpen,
   onClose,
   product,
+  currentUser,
   onDownloadComplete,
 }) => {
+  const [internalUser, setInternalUser] = useState<DiscordUser | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(false);
   const [step, setStep] = useState<"initial" | "preparing" | "completed">("initial");
   const [countdown, setCountdown] = useState(ADS_CONFIG.downloadMonetization.countdownSeconds || 5);
   const [downloadId, setDownloadId] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showFullTerms, setShowFullTerms] = useState(false);
 
+  // If currentUser wasn't provided by parent, check session on open
+  useEffect(() => {
+    if (isOpen && currentUser === undefined) {
+      setCheckingAuth(true);
+      fetch("/api/auth/me", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success && data.user) {
+            setInternalUser(data.user);
+          } else {
+            setInternalUser(null);
+          }
+        })
+        .catch(() => setInternalUser(null))
+        .finally(() => setCheckingAuth(false));
+    }
+  }, [isOpen, currentUser]);
+
+  const effectiveUser = currentUser !== undefined ? currentUser : internalUser;
+
+  const handleDiscordLogin = () => {
+    if (!product) return;
+    const returnUrl = typeof window !== "undefined" ? window.location.pathname + `?product=${product.id}` : `/setting/${product.id}`;
+    window.location.href = `/api/auth/discord/login?returnUrl=${encodeURIComponent(returnUrl)}`;
+  };
+
   const executeDownload = (prod: DigitalProduct) => {
+    if (!effectiveUser) {
+      handleDiscordLogin();
+      return;
+    }
+
     // 1. Trigger actual browser download from API or direct download URL
     if (prod.downloadUrl && prod.downloadUrl.trim().startsWith("http")) {
       window.open(prod.downloadUrl.trim(), "_blank", "noopener,noreferrer");
@@ -140,9 +177,9 @@ export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
         {/* Step Progress Indicator */}
         <div className="px-5 sm:px-6 pt-3 pb-1 border-b border-white/5">
           <div className="flex items-center justify-between max-w-sm mx-auto text-xs font-mono">
-            <div className={`flex items-center gap-1.5 ${step === "initial" ? "text-green-400 font-bold" : step === "preparing" || step === "completed" ? "text-emerald-300" : "text-slate-500"}`}>
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] ${step === "initial" ? "bg-green-400 text-slate-950 font-bold" : "bg-white/10 text-slate-300"}`}>1</span>
-              <span>ตรวจสอบ</span>
+            <div className={`flex items-center gap-1.5 ${!effectiveUser ? "text-[#5865F2] font-bold" : step === "initial" ? "text-green-400 font-bold" : step === "preparing" || step === "completed" ? "text-emerald-300" : "text-slate-500"}`}>
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] ${!effectiveUser ? "bg-[#5865F2] text-white font-bold" : step === "initial" ? "bg-green-400 text-slate-950 font-bold" : "bg-white/10 text-slate-300"}`}>1</span>
+              <span>{!effectiveUser ? "ล็อกอิน Discord" : "ตรวจสอบ"}</span>
             </div>
             <div className="h-0.5 flex-1 mx-2 bg-white/10" />
             <div className={`flex items-center gap-1.5 ${step === "preparing" ? "text-green-400 font-bold" : step === "completed" ? "text-emerald-300" : "text-slate-500"}`}>
@@ -181,102 +218,155 @@ export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
             </span>
           </div>
 
-          {/* STEP 1: INITIAL DETAILS & START BUTTON */}
+          {/* STEP 1: INITIAL DETAILS & START BUTTON (GATED BY DISCORD AUTH) */}
           {step === "initial" && (
             <>
-              {/* Safety & Instructions Alert */}
-              <div className="p-3.5 sm:p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-2 text-xs sm:text-sm font-sans">
-                <div className="flex items-center gap-2 text-amber-400 font-bold font-mono text-xs sm:text-sm">
-                  <ShieldCheck className="w-4 h-4 shrink-0" />
-                  <span>คำแนะนำเพื่อความปลอดภัยสูงสุด:</span>
-                </div>
-                <ul className="space-y-1.5 text-slate-200 pl-5 list-disc text-xs sm:text-sm leading-relaxed">
-                  <li>สคริปต์ทุกตัวสามารถเปิดดู Source Code ด้วย Notepad ได้ก่อนรัน</li>
-                  <li>ระบบมีคำสั่งสร้าง <strong className="text-white">System Restore Point</strong> สำรองอัตโนมัติ</li>
-                  <li>มีไฟล์ <strong className="text-white">Revert Script</strong> แนบให้คืนค่าเดิมได้ตลอดเวลา</li>
-                  <li>คลิกขวาที่ไฟล์แล้วเลือก <strong className="text-white">"Run as administrator"</strong> เพื่อใช้งาน</li>
-                </ul>
-              </div>
-
-              {/* Real ZIP Archive Files Preview (Only for ZIP packages) */}
-              {product.fileFormat?.toUpperCase().includes("ZIP") && product.includedFiles && product.includedFiles.length > 0 && (
-                <div className="p-3.5 sm:p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/25 space-y-2 font-sans">
-                  <div className="text-xs font-mono font-bold text-cyan-400 flex items-center justify-between">
-                    <span>ไฟล์ที่จะได้รับภายในแพ็กเกจ ZIP:</span>
-                    <span className="text-[11px] text-slate-400 font-normal">({product.includedFiles.length} ไฟล์)</span>
+              {!effectiveUser ? (
+                /* Discord Authentication Gate */
+                <div className="p-6 sm:p-8 rounded-2xl bg-[#0b0d14] border border-[#5865F2]/40 text-center space-y-5 shadow-2xl">
+                  <div className="w-16 h-16 rounded-2xl bg-[#5865F2]/20 border border-[#5865F2]/40 flex items-center justify-center mx-auto text-white shadow-lg shadow-[#5865F2]/25">
+                    <DiscordIcon className="w-8 h-8 text-[#5865F2]" />
                   </div>
-                  <div className="max-h-32 overflow-y-auto space-y-1 font-mono text-xs pr-1">
-                    {product.includedFiles.map((f, i) => (
-                      <div key={i} className="px-3 py-1.5 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between">
-                        <span className="text-cyan-300 truncate">{f.filename}</span>
-                        <span className="text-[11px] text-slate-400 font-sans">{f.description}</span>
+                  
+                  <div className="space-y-1.5">
+                    <h4 className="text-xl sm:text-2xl font-black text-white font-sans">
+                      เข้าสู่ระบบ Discord ก่อนดาวน์โหลด
+                    </h4>
+                    <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+                      เพื่อป้องกันบอท ดาวน์โหลดอัตโนมัติ และสแปม ระบบ Pokky Stozy กำหนดให้ยืนยันตัวตนด้วย Discord ก่อนรับแพ็กเกจปรับแต่งฟรี 100%
+                    </p>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      onClick={handleDiscordLogin}
+                      className="w-full py-4 px-6 rounded-2xl bg-[#5865F2] hover:bg-[#4752C4] text-white font-black text-sm sm:text-base flex items-center justify-center gap-3 shadow-xl shadow-[#5865F2]/40 hover:scale-[1.01] active:scale-95 transition-all cursor-pointer group"
+                    >
+                      <DiscordIcon className="w-5 h-5 text-white shrink-0 group-hover:scale-110 transition-transform" />
+                      <span>เข้าสู่ระบบด้วย Discord เพื่อดาวน์โหลด</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 text-[11px] font-mono text-slate-400">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>ใช้สิทธิ์เฉพาะ identify & email • ปลอดภัย 100%</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Verified Discord Member Banner */}
+                  <div className="p-3 rounded-xl bg-white/[0.03] border border-emerald-500/30 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <img
+                        src={effectiveUser.avatarUrl || "https://cdn.discordapp.com/embed/avatars/0.png"}
+                        alt=""
+                        className="w-7 h-7 rounded-lg object-cover ring-1 ring-emerald-400/50 shrink-0"
+                      />
+                      <div className="text-xs">
+                        <span className="text-slate-400">เข้าสู่ระบบแล้ว:</span>{" "}
+                        <strong className="text-white ml-1">{effectiveUser.globalName || effectiveUser.username}</strong>
                       </div>
-                    ))}
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/25 px-2 py-0.5 rounded">
+                      DISCORD VERIFIED
+                    </span>
                   </div>
-                </div>
-              )}
 
-              {/* Terms of Service & Liability Disclaimer Agreement */}
-              <div className="p-4 rounded-xl bg-red-950/25 border border-red-500/30 space-y-3 font-sans">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-red-400 font-bold font-mono text-xs sm:text-sm">
-                    <ShieldAlert className="w-4 h-4 shrink-0 text-red-400" />
-                    <span>ข้อตกลงการใช้งานและข้อจำกัดความรับผิดชอบ:</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowFullTerms(!showFullTerms)}
-                    className="text-[11px] font-mono text-slate-400 hover:text-white underline cursor-pointer"
-                  >
-                    {showFullTerms ? "ย่อข้อตกลง" : "อ่านฉบับเต็ม"}
-                  </button>
-                </div>
-
-                <div className="text-xs text-slate-300 space-y-1.5 leading-relaxed">
-                  <p>
-                    สคริปต์และไฟล์ทั้งหมดจัดทำขึ้นเพื่อการศึกษาและปรับแต่งประสิทธิภาพระบบ ผู้ใช้งานตกลงยินยอมรับความเสี่ยงที่อาจเกิดขึ้นด้วยความสมัครใจของตนเองทั้งหมด (<strong className="text-white">Use at your own risk</strong>) ทาง Pokky Stozy และผู้จัดทำ <strong className="text-red-300">ขอปฏิเสธความรับผิดชอบต่อความเสียหายใดๆ ทั้งสิ้น</strong> ต่ออุปกรณ์ ซอฟต์แวร์ หรือข้อมูลของผู้ใช้งานทุกกรณี
-                  </p>
-                  {showFullTerms && (
-                    <ul className="mt-2 pl-4 list-disc space-y-1 text-slate-400 text-[11px] border-t border-white/10 pt-2 leading-relaxed">
-                      <li>ผู้ใช้มีหน้าที่ตรวจสอบ Source Code และตัดสินใจในการรันด้วยวิจารณญาณของตนเอง</li>
-                      <li>ผู้ใช้ต้องสร้างจุดสำรองระบบ (System Restore Point) ก่อนเริ่มรันสคริปต์เสมอ</li>
-                      <li>หากเกิดปัญหา ผู้ใช้สามารถใช้ไฟล์ Revert Script เพื่อคืนค่าเดิม หรือย้อนกลับด้วย System Restore Point ได้</li>
-                      <li>ทางผู้พัฒนาไม่มีส่วนรับผิดชอบต่อการใช้งานผิดวิธี การขัดข้องของฮาร์ดแวร์ หรือผลกระทบจากอัปเดตระบบของ Windows</li>
+                  {/* Safety & Instructions Alert */}
+                  <div className="p-3.5 sm:p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-2 text-xs sm:text-sm font-sans">
+                    <div className="flex items-center gap-2 text-amber-400 font-bold font-mono text-xs sm:text-sm">
+                      <ShieldCheck className="w-4 h-4 shrink-0" />
+                      <span>คำแนะนำเพื่อความปลอดภัยสูงสุด:</span>
+                    </div>
+                    <ul className="space-y-1.5 text-slate-200 pl-5 list-disc text-xs sm:text-sm leading-relaxed">
+                      <li>สคริปต์ทุกตัวสามารถเปิดดู Source Code ด้วย Notepad ได้ก่อนรัน</li>
+                      <li>ระบบมีคำสั่งสร้าง <strong className="text-white">System Restore Point</strong> สำรองอัตโนมัติ</li>
+                      <li>มีไฟล์ <strong className="text-white">Revert Script</strong> แนบให้คืนค่าเดิมได้ตลอดเวลา</li>
+                      <li>คลิกขวาที่ไฟล์แล้วเลือก <strong className="text-white">&quot;Run as administrator&quot;</strong> เพื่อใช้งาน</li>
                     </ul>
+                  </div>
+
+                  {/* Real ZIP Archive Files Preview (Only for ZIP packages) */}
+                  {product.fileFormat?.toUpperCase().includes("ZIP") && product.includedFiles && product.includedFiles.length > 0 && (
+                    <div className="p-3.5 sm:p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/25 space-y-2 font-sans">
+                      <div className="text-xs font-mono font-bold text-cyan-400 flex items-center justify-between">
+                        <span>ไฟล์ที่จะได้รับภายในแพ็กเกจ ZIP:</span>
+                        <span className="text-[11px] text-slate-400 font-normal">({product.includedFiles.length} ไฟล์)</span>
+                      </div>
+                      <div className="max-h-32 overflow-y-auto space-y-1 font-mono text-xs pr-1">
+                        {product.includedFiles.map((f, i) => (
+                          <div key={i} className="px-3 py-1.5 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between">
+                            <span className="text-cyan-300 truncate">{f.filename}</span>
+                            <span className="text-[11px] text-slate-400 font-sans">{f.description}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </div>
 
-                {/* Mandatory Agreement Checkbox */}
-                <label className="flex items-start gap-2.5 pt-2 border-t border-red-500/20 cursor-pointer select-none group">
-                  <input
-                    type="checkbox"
-                    checked={acceptedTerms}
-                    onChange={(e) => setAcceptedTerms(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded border-white/30 text-green-500 focus:ring-green-400 focus:ring-offset-0 bg-black/60 cursor-pointer accent-green-400"
-                  />
-                  <span className={`text-xs leading-relaxed transition-colors ${acceptedTerms ? "text-green-300 font-semibold" : "text-slate-200 group-hover:text-white"}`}>
-                    ข้าพเจ้าได้อ่าน เข้าใจ และยอมรับข้อตกลงการใช้งานและข้อจำกัดความรับผิดชอบข้างต้นแล้ว (ยินยอมรับความเสี่ยงในการปรับแต่งระบบด้วยตนเอง)
-                  </span>
-                </label>
-              </div>
+                  {/* Terms of Service & Liability Disclaimer Agreement */}
+                  <div className="p-4 rounded-xl bg-red-950/25 border border-red-500/30 space-y-3 font-sans">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-red-400 font-bold font-mono text-xs sm:text-sm">
+                        <ShieldAlert className="w-4 h-4 shrink-0 text-red-400" />
+                        <span>ข้อตกลงการใช้งานและข้อจำกัดความรับผิดชอบ:</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowFullTerms(!showFullTerms)}
+                        className="text-[11px] font-mono text-slate-400 hover:text-white underline cursor-pointer"
+                      >
+                        {showFullTerms ? "ย่อข้อตกลง" : "อ่านฉบับเต็ม"}
+                      </button>
+                    </div>
 
-              {/* Start Preparation Button */}
-              <button
-                onClick={handleStartPreparation}
-                disabled={!acceptedTerms}
-                className={`w-full py-4 sm:py-5 px-8 rounded-2xl font-bold font-mono text-base sm:text-lg transition-all flex items-center justify-center gap-2.5 ${
-                  acceptedTerms
-                    ? "text-slate-950 bg-green-400 hover:bg-green-300 shadow-xl shadow-green-500/25 cursor-pointer active:scale-95"
-                    : "text-slate-500 bg-white/[0.04] border border-white/10 cursor-not-allowed opacity-60"
-                }`}
-              >
-                <Download className="w-5 h-5" />
-                <span>
-                  {acceptedTerms
-                    ? "ยอมรับข้อตกลงและเริ่มดาวน์โหลด (ฟรี 100%)"
-                    : "กรุณาติ๊กยอมรับข้อตกลงก่อนดาวน์โหลด"}
-                </span>
-              </button>
+                    <div className="text-xs text-slate-300 space-y-1.5 leading-relaxed">
+                      <p>
+                        สคริปต์และไฟล์ทั้งหมดจัดทำขึ้นเพื่อการศึกษาและปรับแต่งประสิทธิภาพระบบ ผู้ใช้งานตกลงยินยอมรับความเสี่ยงที่อาจเกิดขึ้นด้วยความสมัครใจของตนเองทั้งหมด (<strong className="text-white">Use at your own risk</strong>) ทาง Pokky Stozy และผู้จัดทำ <strong className="text-red-300">ขอปฏิเสธความรับผิดชอบต่อความเสียหายใดๆ ทั้งสิ้น</strong> ต่ออุปกรณ์ ซอฟต์แวร์ หรือข้อมูลของผู้ใช้งานทุกกรณี
+                      </p>
+                      {showFullTerms && (
+                        <ul className="mt-2 pl-4 list-disc space-y-1 text-slate-400 text-[11px] border-t border-white/10 pt-2 leading-relaxed">
+                          <li>ผู้ใช้มีหน้าที่ตรวจสอบ Source Code และตัดสินใจในการรันด้วยวิจารณญาณของตนเอง</li>
+                          <li>ผู้ใช้ต้องสร้างจุดสำรองระบบ (System Restore Point) ก่อนเริ่มรันสคริปต์เสมอ</li>
+                          <li>หากเกิดปัญหา ผู้ใช้สามารถใช้ไฟล์ Revert Script เพื่อคืนค่าเดิม หรือย้อนกลับด้วย System Restore Point ได้</li>
+                          <li>ทางผู้พัฒนาไม่มีส่วนรับผิดชอบต่อการใช้งานผิดวิธี การขัดข้องของฮาร์ดแวร์ หรือผลกระทบจากอัปเดตระบบของ Windows</li>
+                        </ul>
+                      )}
+                    </div>
+
+                    {/* Mandatory Agreement Checkbox */}
+                    <label className="flex items-start gap-2.5 pt-2 border-t border-red-500/20 cursor-pointer select-none group">
+                      <input
+                        type="checkbox"
+                        checked={acceptedTerms}
+                        onChange={(e) => setAcceptedTerms(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 rounded border-white/30 text-green-500 focus:ring-green-400 focus:ring-offset-0 bg-black/60 cursor-pointer accent-green-400"
+                      />
+                      <span className={`text-xs leading-relaxed transition-colors ${acceptedTerms ? "text-green-300 font-semibold" : "text-slate-200 group-hover:text-white"}`}>
+                        ข้าพเจ้าได้อ่าน เข้าใจ และยอมรับข้อตกลงการใช้งานและข้อจำกัดความรับผิดชอบข้างต้นแล้ว (ยินยอมรับความเสี่ยงในการปรับแต่งระบบด้วยตนเอง)
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Start Preparation Button */}
+                  <button
+                    onClick={handleStartPreparation}
+                    disabled={!acceptedTerms}
+                    className={`w-full py-4 sm:py-5 px-8 rounded-2xl font-bold font-mono text-base sm:text-lg transition-all flex items-center justify-center gap-2.5 ${
+                      acceptedTerms
+                        ? "text-slate-950 bg-green-400 hover:bg-green-300 shadow-xl shadow-green-500/25 cursor-pointer active:scale-95"
+                        : "text-slate-500 bg-white/[0.04] border border-white/10 cursor-not-allowed opacity-60"
+                    }`}
+                  >
+                    <Download className="w-5 h-5" />
+                    <span>
+                      {acceptedTerms
+                        ? "ยอมรับข้อตกลงและเริ่มดาวน์โหลด (ฟรี 100%)"
+                        : "กรุณาติ๊กยอมรับข้อตกลงก่อนดาวน์โหลด"}
+                    </span>
+                  </button>
+                </>
+              )}
             </>
           )}
 

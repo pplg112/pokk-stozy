@@ -2,7 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { DigitalProduct } from "@/types";
+import { DigitalProduct, DiscordUser } from "@/types";
+import { DiscordIcon } from "@/components/icons/DiscordIcon";
 import { 
   Zap, 
   FileCode2, 
@@ -14,12 +15,14 @@ import {
 
 interface ProductCardProps {
   product: DigitalProduct;
+  currentUser?: DiscordUser | null;
   onBuyNow: (product: DigitalProduct) => void;
   onViewDetails: (product: DigitalProduct) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
+  currentUser,
   onBuyNow,
   onViewDetails,
 }) => {
@@ -34,13 +37,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           : "bg-[#0c0e17]/85 border-white/10 hover:border-green-400/60 shadow-md shadow-black/40 hover:shadow-[0_0_30px_rgba(74,222,128,0.18)]"
       }`}
     >
-      {/* Ambient Neon Corner Glow on Hover */}
-      <div 
-        className={`absolute -top-14 -right-14 w-36 h-36 rounded-full blur-2xl pointer-events-none transition-all duration-500 opacity-20 group-hover:opacity-60 ${
-          isPopular ? "bg-cyan-500" : "bg-green-500"
-        }`} 
-      />
-
       <div className="relative z-10">
         {/* Product Cover Image / Banner (Aspect 16:9 Full View) */}
         {product.imageUrl ? (
@@ -158,13 +154,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <Eye className="w-3.5 h-3.5 text-slate-400" />
             ข้อมูลไฟล์
           </Link>
-          <button
-            onClick={() => onBuyNow(product)}
-            className="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold text-slate-950 bg-gradient-to-r from-green-400 via-emerald-400 to-green-300 hover:from-green-300 hover:to-emerald-200 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-green-500/25 hover:shadow-green-500/45 hover:scale-[1.02] active:scale-95 cursor-pointer font-sans"
-          >
-            <Download className="w-3.5 h-3.5 stroke-[2.5]" />
-            ดาวน์โหลดฟรี
-          </button>
+          {!currentUser ? (
+            <button
+              onClick={() => onBuyNow(product)}
+              className="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold text-white bg-[#5865F2] hover:bg-[#4752C4] border border-[#7289da]/60 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-[#5865F2]/25 hover:scale-[1.02] active:scale-95 cursor-pointer font-sans"
+              title="เข้าสู่ระบบ Discord เพื่อดาวน์โหลดฟรี"
+            >
+              <DiscordIcon className="w-3.5 h-3.5 text-white shrink-0" />
+              <span>ล็อกอินโหลดฟรี</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => onBuyNow(product)}
+              className="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/25 hover:scale-[1.02] active:scale-95 cursor-pointer font-sans"
+            >
+              <Download className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>ดาวน์โหลดฟรี</span>
+            </button>
+          )}
         </div>
       </div>
 

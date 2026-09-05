@@ -11,6 +11,7 @@ import { DiscordAuthModal } from "@/components/DiscordAuthModal";
 import { ProductReviewsSection } from "@/components/ProductReviewsSection";
 import { DIGITAL_PRODUCTS } from "@/data/products";
 import { DigitalProduct, DownloadRecord, DiscordUser } from "@/types";
+import { DiscordIcon } from "@/components/icons/DiscordIcon";
 import {
   ArrowLeft,
   Download,
@@ -18,11 +19,11 @@ import {
   Check,
   Star,
   ShieldCheck,
+  ShieldAlert,
   RotateCcw,
   Sparkles,
   FileCode2,
   CheckCircle2,
-  Cpu,
   Terminal,
   ExternalLink,
   Copy,
@@ -263,14 +264,49 @@ export default function SettingDetailPage({ params }: PageProps) {
               </div>
 
               {/* Main Action Buttons */}
-              <div className="space-y-2.5">
-                <button
-                  onClick={() => setIsDownloading(true)}
-                  className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-green-400 via-emerald-400 to-green-300 hover:from-green-300 hover:to-emerald-200 text-slate-950 font-bold text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-green-500/25 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
-                >
-                  <Download className="w-5 h-5 stroke-[2.5]" />
-                  <span>ดาวน์โหลดสคริปต์นี้ฟรี (Free Download)</span>
-                </button>
+              <div className="space-y-3">
+                {currentUser ? (
+                  <>
+                    <button
+                      onClick={() => setIsDownloading(true)}
+                      className="w-full py-4 px-6 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-500/25 hover:scale-[1.01] active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Download className="w-5 h-5 stroke-[2.5]" />
+                      <span>ดาวน์โหลดแพ็กเกจ ({product.fileFormat || ".ZIP"}) ฟรี</span>
+                    </button>
+                    <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white/[0.04] border border-white/10 text-xs">
+                      <img
+                        src={currentUser.avatarUrl || "https://cdn.discordapp.com/embed/avatars/0.png"}
+                        alt=""
+                        className="w-6 h-6 rounded-lg object-cover ring-1 ring-emerald-400/50 shrink-0"
+                      />
+                      <span className="text-slate-300 truncate">
+                        สิทธิ์สมาชิก: <strong className="text-white">{currentUser.globalName || currentUser.username}</strong>
+                      </span>
+                      <span className="ml-auto text-[10px] font-mono text-emerald-400 font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/25 shrink-0">
+                        VERIFIED
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        window.location.href = `/api/auth/discord/login?returnUrl=${encodeURIComponent(window.location.pathname)}`;
+                      }}
+                      className="w-full py-4 px-6 rounded-2xl bg-[#5865F2] hover:bg-[#4752C4] text-white font-black text-sm sm:text-base flex items-center justify-center gap-3 shadow-xl shadow-[#5865F2]/30 hover:scale-[1.01] active:scale-95 transition-all cursor-pointer group"
+                    >
+                      <DiscordIcon className="w-5 h-5 text-white shrink-0 group-hover:scale-110 transition-transform" />
+                      <span>เข้าสู่ระบบ Discord เพื่อดาวน์โหลด</span>
+                    </button>
+                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#5865F2]/10 border border-[#5865F2]/25 text-xs text-slate-300">
+                      <ShieldAlert className="w-4 h-4 text-[#5865F2] shrink-0 mt-0.5" />
+                      <span className="leading-relaxed">
+                        ต้องเข้าสู่ระบบด้วย Discord ก่อนดาวน์โหลดไฟล์ (เพื่อป้องกันบอทและสแปม)
+                      </span>
+                    </div>
+                  </>
+                )}
 
                 <div className="grid grid-cols-2 gap-2">
                   <button

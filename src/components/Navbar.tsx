@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Sparkles, LogOut, User as UserIcon, Bot } from "lucide-react";
+import { DiscordIcon } from "@/components/icons/DiscordIcon";
 import { DiscordUser } from "@/types";
 
 interface NavbarProps {
@@ -157,12 +158,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="tracking-wide font-semibold whitespace-nowrap">SERVER: ONLINE</span>
           </div>
 
-          {/* Discord Community Server Link - Sleek Dark Pill */}
+          {/* Discord Community Server Link - Hidden on mobile/tablet to give login button maximum prominence */}
           <a
             href="https://discord.gg/eHa8MQu7mz"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#5865F2]/40 transition-all shadow-sm group shrink-0 whitespace-nowrap"
+            className="hidden xl:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#5865F2]/40 transition-all shadow-sm group shrink-0 whitespace-nowrap"
             title="เข้าร่วม Discord คอมมูนิตี้"
           >
             <img
@@ -170,23 +171,23 @@ export const Navbar: React.FC<NavbarProps> = ({
               alt="Discord"
               className="w-4 h-4 object-contain group-hover:scale-110 transition-transform drop-shadow shrink-0"
             />
-            <span className="hidden xl:inline whitespace-nowrap">Discord ชุมชน</span>
+            <span className="whitespace-nowrap">Discord ชุมชน</span>
           </a>
 
-          {/* Discord Auth: User Avatar Profile Dropdown OR Official Discord Login Button */}
+          {/* Discord Auth: User Avatar Profile Dropdown OR Super-Prominent Discord Login Button */}
           {effectiveUser ? (
             <div className="relative shrink-0" ref={menuRef}>
               <button
                 type="button"
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 p-1 sm:pr-3 rounded-xl bg-[#5865F2]/15 hover:bg-[#5865F2]/25 border border-[#5865F2]/30 transition-all cursor-pointer whitespace-nowrap shrink-0"
+                className="flex items-center gap-2 p-1.5 sm:pr-3 rounded-xl bg-[#5865F2]/15 hover:bg-[#5865F2]/25 border border-[#5865F2]/30 transition-all cursor-pointer whitespace-nowrap shrink-0 ring-1 ring-[#5865F2]/30"
               >
                 <img
                   src={effectiveUser.avatarUrl || "https://cdn.discordapp.com/embed/avatars/0.png"}
                   alt={effectiveUser.username}
                   className="w-7 h-7 rounded-lg object-cover bg-white/5 shrink-0"
                 />
-                <span className="hidden sm:inline text-xs font-bold text-white max-w-[110px] truncate">
+                <span className="hidden sm:inline text-xs font-bold text-white max-w-[120px] truncate">
                   {effectiveUser.globalName || effectiveUser.username}
                 </span>
               </button>
@@ -223,11 +224,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={handleLoginClick}
-              className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold text-white bg-[#5865F2] hover:bg-[#4752C4] border border-[#5865F2] hover:border-[#6f7bf7] transition-all shadow-md shadow-[#5865F2]/25 hover:scale-[1.02] active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-2.5 px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black text-white bg-[#5865F2] hover:bg-[#4752C4] border-2 border-[#7289da] hover:border-white shadow-xl shadow-[#5865F2]/40 hover:shadow-[#5865F2]/60 hover:scale-[1.03] active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0"
               title="เข้าสู่ระบบด้วย Discord"
             >
-              <img src="/discord-logo.png" alt="Discord" className="w-4 h-4 object-contain shrink-0" />
-              <span className="whitespace-nowrap">เข้าสู่ระบบ Discord</span>
+              <DiscordIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white shrink-0 drop-shadow" />
+              <span className="whitespace-nowrap tracking-wide">เข้าสู่ระบบ Discord</span>
             </button>
           )}
 

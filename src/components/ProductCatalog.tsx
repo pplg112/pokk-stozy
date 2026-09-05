@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { DIGITAL_PRODUCTS } from "@/data/products";
-import { DigitalProduct, ProductCategory } from "@/types";
+import { DigitalProduct, ProductCategory, DiscordUser } from "@/types";
 import { ProductCard } from "./ProductCard";
 import { AdBanner } from "./AdBanner";
 import { 
@@ -13,18 +13,19 @@ import {
   Cpu, 
   Zap, 
   Wifi, 
-  Activity,
-  SlidersHorizontal,
-  FolderOpen,
-  Search,
-  X,
-  RotateCcw
+  Activity, 
+  SlidersHorizontal, 
+  FolderOpen, 
+  Search, 
+  X, 
+  RotateCcw 
 } from "lucide-react";
 
 const ITEMS_PER_PAGE = 9;
 
 interface ProductCatalogProps {
   products?: DigitalProduct[];
+  currentUser?: DiscordUser | null;
   onBuyNow: (product: DigitalProduct) => void;
   onViewDetails: (product: DigitalProduct) => void;
   searchQuery: string;
@@ -33,6 +34,7 @@ interface ProductCatalogProps {
 
 export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   products,
+  currentUser,
   onBuyNow,
   onViewDetails,
   searchQuery,
@@ -249,6 +251,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
               <ProductCard
                 key={prod.id}
                 product={prod}
+                currentUser={currentUser}
                 onBuyNow={onBuyNow}
                 onViewDetails={onViewDetails}
               />

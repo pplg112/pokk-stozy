@@ -176,6 +176,7 @@ export default function HomePage() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onOpenAiChat={() => handleOpenAiChat()}
+          currentUser={currentUser}
           onOpenAuthModal={() => {
             if (isDiscordConfigured) {
               window.location.href = `/api/auth/discord/login?returnUrl=${encodeURIComponent(window.location.pathname)}`;
@@ -190,33 +191,31 @@ export default function HomePage() {
       {/* Main Content */}
       <main className="flex-1 relative z-10">
         {/* Vibrant Esports Hero */}
-        <StoreHero onOpenAiChat={() => handleOpenAiChat()} />
+        <StoreHero onOpenAiChat={() => handleOpenAiChat()} currentUser={currentUser} />
         
         {/* Products Grid */}
         <ProductCatalog
           products={productsList}
+          currentUser={currentUser}
           onBuyNow={handleStartDownload}
           onViewDetails={handleOpenProduct}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
         />
         
-        {/* Gemini AI PC Optimizer Assistant Banner */}
+        {/* Gemini AI PC Optimizer Assistant Banner - Sleek Dark Theme */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="relative rounded-3xl bg-gradient-to-r from-[#0d101a] via-[#111728] to-[#0c101c] border border-green-500/30 p-6 sm:p-10 overflow-hidden shadow-2xl shadow-green-950/25">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-green-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-
+          <div className="relative rounded-3xl bg-[#0b0e17] border border-white/10 p-6 sm:p-10 overflow-hidden shadow-2xl">
             <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
               <div className="space-y-4 text-center lg:text-left max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-green-500/15 via-emerald-500/10 to-cyan-500/15 border border-green-500/30 text-green-300 text-xs font-mono font-bold shadow-sm">
-                  <Sparkles className="w-3.5 h-3.5 text-green-400 animate-pulse" />
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-mono font-bold shadow-sm">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
                   <span>POKKY GEMINI AI • ผู้ช่วยปรับแต่งคอมพิวเตอร์อัจฉริยะ</span>
                 </div>
                 
                 <h3 className="text-2xl sm:text-4xl font-black text-white tracking-tight leading-snug">
                   ไม่แน่ใจว่าใช้สคริปต์ไหนดี?{" "}
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-300 to-cyan-400">
+                  <span className="text-emerald-400">
                     ปรึกษา Gemini AI ได้ฟรี
                   </span>
                 </h3>
@@ -294,6 +293,7 @@ export default function HomePage() {
         isOpen={!!downloadingProduct}
         onClose={handleCloseDownload}
         product={downloadingProduct}
+        currentUser={currentUser}
         onDownloadComplete={handleDownloadComplete}
       />
 

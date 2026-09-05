@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getClientIp, checkDownloadRateLimit } from "@/lib/rateLimit";
+import { getAuthenticatedUser } from "@/lib/userAuth";
 
 function isSafeRedirectUrl(urlStr: string): boolean {
   try {
@@ -66,6 +67,36 @@ export async function GET(
       return NextResponse.json(
         { success: false, error: "Package not found" },
         { status: 404 }
+      );
+    }
+
+    // Enforce Discord Authentication before allowing download
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      const acceptHeader = request.headers.get("accept") || "";
+      const secFetchDest = request.headers.get("sec-fetch-dest") || "";
+      const isBrowserNavigation =
+        acceptHeader.includes("text/html") ||
+        secFetchDest === "document" ||
+        secFetchDest === "iframe" ||
+        (!request.headers.get("x-requested-with") && acceptHeader.includes("*/*"));
+
+      if (isBrowserNavigation) {
+        const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "pokkystozy.xyz";
+        const proto = request.headers.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
+        return NextResponse.redirect(
+          `${proto}://${host}/api/auth/discord/login?returnUrl=/setting/${id}`
+        );
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: "กรุณาเข้าสู่ระบบด้วย Discord ก่อนดาวน์โหลดไฟล์",
+          requireDiscordLogin: true,
+          loginUrl: `/api/auth/discord/login?returnUrl=/setting/${id}`,
+        },
+        { status: 401 }
       );
     }
 
