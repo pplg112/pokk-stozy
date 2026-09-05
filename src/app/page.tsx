@@ -176,8 +176,13 @@ export default function HomePage() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onOpenAiChat={() => handleOpenAiChat()}
-          currentUser={currentUser}
-          onOpenAuthModal={() => setIsAuthModalOpen(true)}
+          onOpenAuthModal={() => {
+            if (isDiscordConfigured) {
+              window.location.href = `/api/auth/discord/login?returnUrl=${encodeURIComponent(window.location.pathname)}`;
+            } else {
+              setIsAuthModalOpen(true);
+            }
+          }}
           onLogout={handleLogout}
         />
       </div>

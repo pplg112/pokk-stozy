@@ -13,12 +13,15 @@ export async function GET(request: NextRequest) {
   const state = Buffer.from(JSON.stringify({ returnUrl })).toString("base64url");
 
   if (!isDiscordConfigured()) {
-    return NextResponse.json({
-      success: false,
-      configured: false,
-      error: "Discord OAuth2 credentials not yet configured. Please use Quick Login.",
-      redirectUri,
-    });
+    if (searchParams.get("format") === "json") {
+      return NextResponse.json({
+        success: false,
+        configured: false,
+        error: "Discord OAuth2 credentials not yet configured.",
+        redirectUri,
+      });
+    }
+    return NextResponse.redirect(new URL(`${returnUrl}?auth_error=not_configured`, request.url));
   }
 
   const authUrl = getDiscordOAuthUrl(redirectUri, state);

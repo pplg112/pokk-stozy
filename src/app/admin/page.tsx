@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import JSZip from "jszip";
 import { RealProduct } from "@/data/realProducts";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { DiscordAuthModal } from "@/components/DiscordAuthModal";
 import { 
   Plus, 
   Trash2, 
@@ -62,6 +63,20 @@ export default function AdminDashboardPage() {
   const [isTestingApiKey, setIsTestingApiKey] = useState(false);
   const [testKeyResult, setTestKeyResult] = useState<{ success: boolean; message: string } | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
+
+  // Discord OAuth2 Settings State
+  const [isDiscordConfigured, setIsDiscordConfigured] = useState(false);
+  const [isDiscordModalOpen, setIsDiscordModalOpen] = useState(false);
+
+  const checkDiscordStatus = async () => {
+    try {
+      const res = await fetch("/api/admin/discord-config");
+      const data = await res.json();
+      if (data.success) {
+        setIsDiscordConfigured(Boolean(data.isConfigured));
+      }
+    } catch {}
+  };
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -154,6 +169,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     loadData();
+    checkDiscordStatus();
     const savedKey = typeof window !== "undefined" ? localStorage.getItem("pokky_gemini_api_key") || "" : "";
     setGeminiApiKey(savedKey);
     setTempApiKey(savedKey);
@@ -710,6 +726,25 @@ export default function AdminDashboardPage() {
                 geminiApiKey ? "bg-green-400/20 text-green-300" : "bg-cyan-400/20 text-cyan-300"
               }`}>
                 {geminiApiKey ? "เปิดใช้งานแล้ว" : "ฟรี Key"}
+              </span>
+            </button>
+
+            {/* Discord OAuth2 Settings Button */}
+            <button
+              type="button"
+              onClick={() => setIsDiscordModalOpen(true)}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${
+                isDiscordConfigured
+                  ? "bg-[#5865F2]/15 text-indigo-300 border-[#5865F2]/40 hover:bg-[#5865F2]/25 hover:border-[#5865F2]/60 shadow-sm shadow-[#5865F2]/15"
+                  : "bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20 hover:border-amber-500/50"
+              }`}
+            >
+              <img src="/discord-logo.png" alt="Discord" className="w-4 h-4 object-contain shrink-0" />
+              <span>ตั้งค่า Discord OAuth</span>
+              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full font-bold ${
+                isDiscordConfigured ? "bg-[#5865F2]/25 text-indigo-200" : "bg-amber-400/20 text-amber-300"
+              }`}>
+                {isDiscordConfigured ? "เชื่อมต่อแล้ว" : "ต้องตั้งค่า"}
               </span>
             </button>
 
@@ -1607,6 +1642,16 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Discord OAuth Settings Modal in Admin */}
+      <DiscordAuthModal
+        isOpen={isDiscordModalOpen}
+        onClose={() => {
+          setIsDiscordModalOpen(false);
+          checkDiscordStatus();
+        }}
+        isDiscordConfigured={isDiscordConfigured}
+      />
 
     </div>
   );

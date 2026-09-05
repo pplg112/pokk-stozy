@@ -1,72 +1,132 @@
 "use client";
 
-import React, { useState } from "react";
-import { X, ShieldCheck, Sparkles, CheckCircle2, User, ArrowRight, Loader2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import {
+  X,
+  ShieldCheck,
+  CheckCircle2,
+  ArrowRight,
+  Loader2,
+  Copy,
+  Check,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Lock,
+  Sparkles,
+  Key,
+  HelpCircle
+} from "lucide-react";
 import { DiscordUser } from "@/types";
 
 interface DiscordAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess: (user: DiscordUser) => void;
+  onLoginSuccess?: (user: DiscordUser) => void;
   isDiscordConfigured?: boolean;
 }
-
-const PRESET_AVATARS = [
-  "https://cdn.discordapp.com/embed/avatars/0.png",
-  "https://cdn.discordapp.com/embed/avatars/1.png",
-  "https://cdn.discordapp.com/embed/avatars/2.png",
-  "https://cdn.discordapp.com/embed/avatars/3.png",
-  "https://cdn.discordapp.com/embed/avatars/4.png",
-];
 
 export const DiscordAuthModal: React.FC<DiscordAuthModalProps> = ({
   isOpen,
   onClose,
-  onLoginSuccess,
-  isDiscordConfigured = false,
+  isDiscordConfigured: initialConfigured = false,
 }) => {
-  const [username, setUsername] = useState("");
-  const [discordTag, setDiscordTag] = useState("");
-  const [selectedAvatar, setSelectedAvatar] = useState(PRESET_AVATARS[0]);
+  const [isConfigured, setIsConfigured] = useState(initialConfigured);
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [showSecret, setShowSecret] = useState(false);
+  const [showAdminPass, setShowAdminPass] = useState(false);
+  const [redirectUri, setRedirectUri] = useState("");
+  const [isCopied, setIsCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  const [activeTab, setActiveTab] = useState<"login" | "setup">("login");
+
+  // Fetch discord config status and dynamic redirectUri on mount
+  useEffect(() => {
+    if (isOpen) {
+      setError("");
+      setSuccessMsg("");
+      const currentOrigin = typeof window !== "undefined" ? window.location.origin : "https://pokkystozy.xyz";
+      setRedirectUri(`${currentOrigin}/api/auth/discord/callback`);
+
+      fetch("/api/admin/discord-config")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            const configured = Boolean(data.isConfigured);
+            setIsConfigured(configured);
+            if (data.clientId) setClientId(data.clientId);
+            if (data.redirectUri) setRedirectUri(data.redirectUri);
+            if (!configured) {
+              setActiveTab("setup");
+            } else {
+              setActiveTab("login");
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleOAuthLogin = () => {
-    window.location.href = `/api/auth/discord/login?returnUrl=${encodeURIComponent(window.location.pathname)}`;
+    const returnUrl = typeof window !== "undefined" ? window.location.pathname + window.location.search : "/";
+    window.location.href = `/api/auth/discord/login?returnUrl=${encodeURIComponent(returnUrl)}`;
   };
 
-  const handleQuickLogin = async (e: React.FormEvent) => {
+  const handleCopyRedirectUri = () => {
+    if (!redirectUri) return;
+    navigator.clipboard.writeText(redirectUri);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2500);
+  };
+
+  const handleSaveSetup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim()) {
-      setError("กรุณากรอกชื่อ Discord ของคุณ");
+    if (!clientId.trim()) {
+      setError("กรุณากรอก Discord Client ID");
+      return;
+    }
+    if (!clientSecret.trim()) {
+      setError("กรุณากรอก Discord Client Secret");
+      return;
+    }
+    if (!adminPassword.trim()) {
+      setError("กรุณากรอกรหัสผ่าน Admin เพื่อยืนยันสิทธิ์");
       return;
     }
 
     setIsLoading(true);
     setError("");
+    setSuccessMsg("");
 
     try {
-      const res = await fetch("/api/auth/me", {
+      const res = await fetch("/api/admin/discord-config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username: username.trim(),
-          discordTag: discordTag.trim(),
-          avatarUrl: selectedAvatar,
+          clientId: clientId.trim(),
+          clientSecret: clientSecret.trim(),
+          adminPassword: adminPassword.trim(),
         }),
       });
 
       const data = await res.json();
-      if (data.success && data.user) {
-        onLoginSuccess(data.user);
-        onClose();
+      if (data.success) {
+        setIsConfigured(true);
+        setSuccessMsg("บันทึกการตั้งค่า Discord OAuth2 เรียบร้อย! กำลังพาคุณไปที่หน้าล็อกอิน Discord...");
+        setTimeout(() => {
+          handleOAuthLogin();
+        }, 1200);
       } else {
-        setError(data.error || "เข้าสู่ระบบไม่สำเร็จ");
+        setError(data.error || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
       }
     } catch {
-      setError("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+      setError("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง");
     } finally {
       setIsLoading(false);
     }
@@ -74,139 +134,276 @@ export const DiscordAuthModal: React.FC<DiscordAuthModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn font-sans">
-      <div className="relative w-full max-w-md bg-[#0d101a] border border-[#5865F2]/40 rounded-3xl p-6 sm:p-7 shadow-2xl shadow-[#5865F2]/20 overflow-hidden">
-        {/* Glow Ambient */}
-        <div className="absolute top-0 right-0 w-60 h-60 bg-[#5865F2]/15 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-60 h-60 bg-green-500/10 blur-3xl pointer-events-none" />
+      <div className="relative w-full max-w-lg bg-[#0c0f18] border border-[#5865F2]/40 rounded-3xl p-6 sm:p-7 shadow-2xl shadow-[#5865F2]/20 overflow-hidden">
+        {/* Ambient Glows */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#5865F2]/15 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-green-500/10 blur-3xl pointer-events-none" />
 
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+          className="absolute top-4 right-4 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
 
         {/* Header */}
-        <div className="flex items-center gap-3 mb-5">
-          <div className="p-3 rounded-2xl bg-[#5865F2]/20 border border-[#5865F2]/40 text-[#5865F2] shadow-lg shadow-[#5865F2]/20">
-            <img src="/discord-logo.png" alt="Discord" className="w-7 h-7 object-contain drop-shadow" />
+        <div className="flex items-center gap-3.5 mb-5">
+          <div className="p-3 rounded-2xl bg-[#5865F2]/20 border border-[#5865F2]/40 text-[#5865F2] shadow-lg shadow-[#5865F2]/20 shrink-0">
+            <img src="/discord-logo.png" alt="Discord" className="w-8 h-8 object-contain drop-shadow" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <h3 className="text-lg sm:text-xl font-black text-white flex items-center gap-2">
               <span>เข้าสู่ระบบด้วย Discord</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#5865F2]/25 text-indigo-300 border border-[#5865F2]/40 uppercase font-bold">
+                OAuth2 แท้
+              </span>
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              เพื่อร่วมแสดงความคิดเห็นและตอบกลับคอมเมนต์
+              เชื่อมต่อบัญชี Discord ทางการ เพื่อคอมเมนต์และตอบกลับได้ทันที
             </p>
           </div>
         </div>
 
-        {/* OAuth Button (if Discord app configured) */}
-        {isDiscordConfigured && (
-          <div className="mb-5 pb-5 border-b border-white/10">
-            <button
-              onClick={handleOAuthLogin}
-              className="w-full py-3 px-4 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] text-white font-bold text-sm flex items-center justify-center gap-2.5 transition-all shadow-lg shadow-[#5865F2]/30 hover:scale-[1.02] active:scale-95 cursor-pointer"
-            >
-              <img src="/discord-logo.png" alt="Discord" className="w-5 h-5 object-contain" />
-              <span>เข้าสู่ระบบผ่าน Discord OAuth2</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <div className="relative flex items-center justify-center my-4">
-              <span className="h-px bg-white/10 w-full" />
-              <span className="px-3 bg-[#0d101a] text-[11px] font-mono text-slate-500 uppercase shrink-0">
-                หรือเชื่อมต่อด่วน
-              </span>
-              <span className="h-px bg-white/10 w-full" />
-            </div>
+        {/* Navigation Tabs (Login vs Settings) */}
+        <div className="flex rounded-xl bg-black/40 p-1 mb-5 border border-white/10">
+          <button
+            type="button"
+            onClick={() => setActiveTab("login")}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === "login"
+                ? "bg-[#5865F2] text-white shadow-md shadow-[#5865F2]/30"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>เข้าสู่ระบบ Discord</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("setup")}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === "setup"
+                ? "bg-[#5865F2] text-white shadow-md shadow-[#5865F2]/30"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <Key className="w-3.5 h-3.5" />
+            <span>ตั้งค่า OAuth2</span>
+            {!isConfigured && (
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            )}
+          </button>
+        </div>
+
+        {/* Tab 1: Official Discord OAuth2 Login Screen */}
+        {activeTab === "login" && (
+          <div className="space-y-4">
+            {isConfigured ? (
+              <>
+                <div className="p-4 rounded-2xl bg-[#5865F2]/10 border border-[#5865F2]/30 space-y-2.5">
+                  <div className="flex items-center gap-2 text-xs font-bold text-indigo-300">
+                    <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+                    <span>ระบบ Discord OAuth2 พร้อมใช้งานแล้ว</span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    คลิกปุ่มด้านล่างเพื่อเข้าสู่ระบบผ่านเว็บไซต์ทางการของ Discord ระบบจะดึงชื่อและรูปโปรไฟล์ของคุณมาใช้บนเว็บไซต์ Pokky Stozy โดยอัตโนมัติ
+                  </p>
+                </div>
+
+                <div className="space-y-2 py-1 text-xs text-slate-400 font-mono">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                    <span>ยืนยันตัวตนด้วยโปรไฟล์ Discord จริง 100%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                    <span>ปลอดภัย ไม่มีการเก็บรหัสผ่านใดๆ บนเซิร์ฟเวอร์</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                    <span>สามารถแสดงความคิดเห็นและตอบกลับคอมเมนต์ได้</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleOAuthLogin}
+                  className="w-full py-3.5 px-4 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] text-white font-black text-sm flex items-center justify-center gap-2.5 transition-all shadow-xl shadow-[#5865F2]/30 hover:scale-[1.02] active:scale-95 cursor-pointer group"
+                >
+                  <img src="/discord-logo.png" alt="Discord" className="w-5 h-5 object-contain group-hover:scale-110 transition-transform drop-shadow" />
+                  <span>เข้าสู่ระบบผ่าน Discord OAuth2 ทันที</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3 text-center">
+                <div className="w-10 h-10 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mx-auto text-amber-400">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">ยังไม่ได้กำหนดค่า Discord OAuth2</h4>
+                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                    ระบบต้องการ Client ID และ Client Secret จาก Discord Developer Portal เพื่อเริ่มใช้งานระบบล็อกอิน Discord จริง
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("setup")}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+                >
+                  <span>ไปที่หน้าตั้งค่า OAuth2</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Quick Discord Connect Form */}
-        <form onSubmit={handleQuickLogin} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              ชื่อผู้ใช้ Discord (Username / Global Name) *
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="เช่น PokkyPlayer หรือ PkGamer"
-                maxLength={40}
-                required
-                className="w-full bg-black/50 border border-white/15 focus:border-[#5865F2] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none transition-all"
-              />
-            </div>
-          </div>
+        {/* Tab 2: Discord Developer Setup Screen */}
+        {activeTab === "setup" && (
+          <form onSubmit={handleSaveSetup} className="space-y-4">
+            {/* Step Guide Box */}
+            <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 space-y-2 text-xs">
+              <div className="flex items-center justify-between text-slate-300 font-bold">
+                <span className="flex items-center gap-1.5 text-indigo-300">
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  <span>วิธีตั้งค่า Discord App ใน 1 นาที</span>
+                </span>
+                <a
+                  href="https://discord.com/developers/applications"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-[#5865F2] hover:underline flex items-center gap-1 font-semibold"
+                >
+                  <span>เปิด Developer Portal</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+              <ol className="list-decimal list-inside text-slate-400 space-y-1 text-[11px] leading-relaxed">
+                <li>ไปที่ Discord Developer Portal กดสร้าง <b>New Application</b></li>
+                <li>ไปที่เมนู <b>OAuth2</b> แล้วเพิ่ม <b>Redirect URI</b> ด้านล่างนี้:</li>
+              </ol>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              แท็ก Discord (ตัวเลือกเสริม เช่น #1234 หรือกลุ่มสังกัด)
-            </label>
-            <input
-              type="text"
-              value={discordTag}
-              onChange={(e) => setDiscordTag(e.target.value)}
-              placeholder="เช่น #0001 หรือ Esport Clan"
-              maxLength={20}
-              className="w-full bg-black/50 border border-white/15 focus:border-[#5865F2] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-2">
-              เลือกรูปโปรไฟล์ Discord
-            </label>
-            <div className="flex items-center gap-2.5">
-              {PRESET_AVATARS.map((url, idx) => (
+              {/* Redirect URI Box with 1-click Copy */}
+              <div className="flex items-center gap-2 bg-[#08090d] border border-white/15 rounded-xl p-2 font-mono text-[11px]">
+                <span className="truncate flex-1 text-slate-300 select-all">{redirectUri}</span>
                 <button
                   type="button"
-                  key={idx}
-                  onClick={() => setSelectedAvatar(url)}
-                  className={`relative p-1 rounded-2xl transition-all ${
-                    selectedAvatar === url
-                      ? "ring-2 ring-[#5865F2] scale-110 bg-[#5865F2]/20"
-                      : "opacity-60 hover:opacity-100 bg-white/5"
-                  }`}
+                  onClick={handleCopyRedirectUri}
+                  className="px-2.5 py-1 rounded-lg bg-[#5865F2]/20 hover:bg-[#5865F2]/35 border border-[#5865F2]/40 text-[#5865F2] text-[10px] font-bold flex items-center gap-1 transition-all shrink-0 cursor-pointer"
+                  title="คัดลอก Redirect URI"
                 >
-                  <img src={url} alt="Avatar" className="w-8 h-8 rounded-xl object-cover" />
+                  {isCopied ? (
+                    <>
+                      <Check className="w-3 h-3 text-green-400" />
+                      <span className="text-green-400">คัดลอกแล้ว</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      <span>คัดลอก URI</span>
+                    </>
+                  )}
                 </button>
-              ))}
+              </div>
             </div>
-          </div>
 
-          {error && (
-            <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
-              <span>⚠️ {error}</span>
+            {/* Inputs */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Discord Client ID (Application ID) *
+              </label>
+              <input
+                type="text"
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                placeholder="เช่น 1341234567890123456"
+                required
+                className="w-full bg-black/50 border border-white/15 focus:border-[#5865F2] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white font-mono placeholder-slate-500 focus:outline-none transition-all"
+              />
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={isLoading || !username.trim()}
-            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#5865F2] to-indigo-600 hover:from-[#4752C4] hover:to-indigo-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#5865F2]/25 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>กำลังเข้าสู่ระบบ...</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-4 h-4" />
-                <span>เชื่อมต่อโปรไฟล์ Discord ทันที</span>
-              </>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Discord Client Secret *
+              </label>
+              <div className="relative">
+                <input
+                  type={showSecret ? "text" : "password"}
+                  value={clientSecret}
+                  onChange={(e) => setClientSecret(e.target.value)}
+                  placeholder="เช่น AbCdEfG123456_xyz"
+                  required
+                  className="w-full bg-black/50 border border-white/15 focus:border-[#5865F2] rounded-xl pl-3.5 pr-10 py-2.5 text-xs sm:text-sm text-white font-mono placeholder-slate-500 focus:outline-none transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSecret(!showSecret)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                >
+                  {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                รหัสผ่าน Admin (เพื่อบันทึกการตั้งค่า) *
+              </label>
+              <div className="relative">
+                <input
+                  type={showAdminPass ? "text" : "password"}
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  placeholder="กรอกรหัสผ่านผู้ดูแลระบบ"
+                  required
+                  className="w-full bg-black/50 border border-white/15 focus:border-green-400 rounded-xl pl-3.5 pr-10 py-2.5 text-xs sm:text-sm text-white font-mono placeholder-slate-500 focus:outline-none transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAdminPass(!showAdminPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                >
+                  {showAdminPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2 font-mono">
+                <span>⚠️ {error}</span>
+              </div>
             )}
-          </button>
 
-          <p className="text-[11px] text-slate-500 text-center leading-relaxed">
-            ระบบจะใช้ชื่อและรูปอวาตาร์นี้แสดงในความคิดเห็นและการตอบกลับของคุณบน Pokky Stozy
-          </p>
-        </form>
+            {successMsg && (
+              <div className="p-2.5 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400 text-xs flex items-center gap-2 font-mono">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-green-400" />
+                <span>{successMsg}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading || !clientId.trim() || !clientSecret.trim()}
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#5865F2] to-indigo-600 hover:from-[#4752C4] hover:to-indigo-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#5865F2]/25 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>กำลังบันทึกและตรวจสอบ...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>บันทึกและเชื่อมต่อ Discord ทันที</span>
+                </>
+              )}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
 };
+

@@ -69,6 +69,13 @@ export default function SettingDetailPage({ params }: PageProps) {
     } catch {}
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      setCurrentUser(null);
+    } catch {}
+  };
+
   useEffect(() => {
     checkUserSession();
   }, []);
@@ -175,7 +182,18 @@ export default function SettingDetailPage({ params }: PageProps) {
 
       {/* Navigation Bar */}
       <div className="relative z-40">
-        <Navbar onOpenAiChat={() => setIsAiChatOpen(true)} />
+        <Navbar
+          onOpenAiChat={() => setIsAiChatOpen(true)}
+          currentUser={currentUser}
+          onOpenAuthModal={() => {
+            if (isDiscordConfigured) {
+              window.location.href = `/api/auth/discord/login?returnUrl=${encodeURIComponent(window.location.pathname)}`;
+            } else {
+              setIsAuthModalOpen(true);
+            }
+          }}
+          onLogout={handleLogout}
+        />
       </div>
 
       <main className="flex-1 relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">

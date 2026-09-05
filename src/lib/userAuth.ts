@@ -1,10 +1,67 @@
+import fs from "fs";
+import path from "path";
 import { NextRequest } from "next/server";
 import { DiscordUser } from "@/types";
 
 export const USER_COOKIE_NAME = "pokky_user_session";
 const SESSION_SECRET = process.env.USER_SESSION_SECRET || process.env.ADMIN_SESSION_SECRET || "pokky_user_oauth_secret_key_2026";
-const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || "";
-const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || "";
+
+export interface DiscordConfig {
+  clientId: string;
+  clientSecret: string;
+}
+
+const DATA_DIR = path.join(process.cwd(), "data");
+const DISCORD_CONFIG_FILE = path.join(DATA_DIR, "discord_config.json");
+
+let cachedConfig: DiscordConfig | null = null;
+
+export function getDiscordConfig(): DiscordConfig {
+  if (cachedConfig && (cachedConfig.clientId || cachedConfig.clientSecret)) {
+    return cachedConfig;
+  }
+
+  let clientId = (process.env.DISCORD_CLIENT_ID || "").trim();
+  let clientSecret = (process.env.DISCORD_CLIENT_SECRET || "").trim();
+
+  try {
+    if (fs.existsSync(DISCORD_CONFIG_FILE)) {
+      const raw = fs.readFileSync(DISCORD_CONFIG_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (parsed.clientId && typeof parsed.clientId === "string") {
+        clientId = parsed.clientId.trim();
+      }
+      if (parsed.clientSecret && typeof parsed.clientSecret === "string") {
+        clientSecret = parsed.clientSecret.trim();
+      }
+    }
+  } catch (err) {
+    // Ignore read errors
+  }
+
+  cachedConfig = { clientId, clientSecret };
+  return cachedConfig;
+}
+
+export function saveDiscordConfig(clientId: string, clientSecret: string): boolean {
+  cachedConfig = {
+    clientId: (clientId || "").trim(),
+    clientSecret: (clientSecret || "").trim(),
+  };
+
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      try {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      } catch {}
+    }
+    fs.writeFileSync(DISCORD_CONFIG_FILE, JSON.stringify(cachedConfig, null, 2), "utf-8");
+    return true;
+  } catch (err) {
+    console.error("Failed to write discord_config.json:", err);
+    return false;
+  }
+}
 
 // Constant-time comparison
 function timingSafeEqual(a: string, b: string): boolean {
@@ -35,15 +92,17 @@ async function hmacSign(data: string, secret: string): Promise<string> {
 }
 
 export function isDiscordConfigured(): boolean {
-  return Boolean(DISCORD_CLIENT_ID && DISCORD_CLIENT_SECRET);
+  const { clientId, clientSecret } = getDiscordConfig();
+  return Boolean(clientId && clientSecret);
 }
 
 export function getDiscordOAuthUrl(redirectUri: string, state: string = "pokky_auth"): string {
-  if (!DISCORD_CLIENT_ID) {
+  const { clientId } = getDiscordConfig();
+  if (!clientId) {
     return "";
   }
   const params = new URLSearchParams({
-    client_id: DISCORD_CLIENT_ID,
+    client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
     scope: "identify email",
@@ -64,11 +123,12 @@ export function getDiscordAvatarUrl(userId: string, avatarHash?: string | null):
 }
 
 export async function exchangeDiscordCode(code: string, redirectUri: string): Promise<string | null> {
-  if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET) return null;
+  const { clientId, clientSecret } = getDiscordConfig();
+  if (!clientId || !clientSecret) return null;
 
   const params = new URLSearchParams({
-    client_id: DISCORD_CLIENT_ID,
-    client_secret: DISCORD_CLIENT_SECRET,
+    client_id: clientId,
+    client_secret: clientSecret,
     grant_type: "authorization_code",
     code,
     redirect_uri: redirectUri,
@@ -81,10 +141,15 @@ export async function exchangeDiscordCode(code: string, redirectUri: string): Pr
       body: params.toString(),
     });
 
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+      const errText = await resp.text();
+      console.error("Discord token exchange failed:", resp.status, errText);
+      return null;
+    }
     const data = await resp.json();
     return data.access_token || null;
-  } catch {
+  } catch (err) {
+    console.error("Discord token exchange network error:", err);
     return null;
   }
 }
