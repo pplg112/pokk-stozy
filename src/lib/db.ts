@@ -11,7 +11,8 @@ const REVIEWS_FILE = path.join(DATA_DIR, "reviews.json");
 // In-memory cache for fast lookups & serverless persistence during instance lifetime
 let memoryCache: RealProduct[] | null = null;
 let reviewsCache: Review[] | null = null;
-const fileStorage: Record<string, { filename: string; content: string }> = {};
+const MAX_BLOB_STORAGE = 15;
+const fileStorage = new Map<string, { filename: string; content: string }>();
 
 function ensureDbFile(): RealProduct[] {
   if (memoryCache !== null) {
@@ -218,9 +219,10 @@ export const db = {
   async createProduct(data: Partial<RealProduct> & { name: string; category: RealProduct["category"] }): Promise<RealProduct> {
     const id = data.id || `pokky-${Date.now()}`;
     
-    let scriptContentToStore = data.scriptContent?.startsWith("data:")
-      ? data.scriptContent
-      : sanitizeCode(data.scriptContent || `@echo off\ntitle ${data.name}\necho [POKKY STOZY] กำลังดำเนินการปรับแต่ง...\npause`);
+    const rawScript = typeof data.scriptContent === "string" ? data.scriptContent : "";
+    let scriptContentToStore = rawScript.startsWith("data:")
+      ? rawScript
+      : sanitizeCode(rawScript || `@echo off\ntitle ${data.name}\necho [POKKY STOZY] กำลังดำเนินการปรับแต่ง...\npause`);
 
     if (data.downloadUrl && data.downloadUrl.trim().startsWith("http")) {
       const cleanUrl = data.downloadUrl.trim();
@@ -297,7 +299,7 @@ export const db = {
     if (sanitizedUpdates.fileSize !== undefined) sanitizedUpdates.fileSize = sanitizeString(sanitizedUpdates.fileSize);
     
     let scriptContentToStore = sanitizedUpdates.scriptContent;
-    if (scriptContentToStore !== undefined) {
+    if (typeof scriptContentToStore === "string") {
       scriptContentToStore = scriptContentToStore.startsWith("data:")
         ? scriptContentToStore
         : sanitizeCode(scriptContentToStore);
@@ -568,17 +570,17 @@ export const db = {
   },
 
   saveUploadedBlob(fileId: string, filename: string, content: string) {
-    const keys = Object.keys(fileStorage);
-    if (keys.length >= 50) {
-      for (const k of keys.slice(0, 10)) {
-        delete fileStorage[k];
+    if (fileStorage.size >= MAX_BLOB_STORAGE) {
+      const oldestKey = fileStorage.keys().next().value;
+      if (oldestKey) {
+        fileStorage.delete(oldestKey);
       }
     }
-    fileStorage[fileId] = { filename, content };
+    fileStorage.set(fileId, { filename, content });
     return fileId;
   },
 
   getUploadedBlob(fileId: string) {
-    return fileStorage[fileId] || null;
+    return fileStorage.get(fileId) || null;
   }
 };

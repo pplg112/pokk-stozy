@@ -29,21 +29,31 @@ function cleanStore(store: Map<string, RateLimitRecord>) {
   }
 }
 
-setInterval(() => {
-  cleanStore(adminAuthStore);
-  cleanStore(reviewStore);
-  cleanStore(downloadStore);
-  cleanStore(productsStore);
-}, 60000);
+function ensureStoreBounded(store: Map<string, RateLimitRecord>) {
+  if (store.size >= MAX_STORE_SIZE) {
+    cleanStore(store);
+    if (store.size >= MAX_STORE_SIZE) {
+      const oldestKey = store.keys().next().value;
+      if (oldestKey) store.delete(oldestKey);
+    }
+  }
+}
 
 export function getClientIp(request: NextRequest): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) {
-    return forwarded.split(",")[0].trim();
+  // 1. Platform-provided IP property if available (e.g. Vercel runtime)
+  const directIp = (request as unknown as { ip?: string }).ip;
+  if (directIp && typeof directIp === "string") {
+    return directIp.trim();
   }
+  // 2. Real IP header set by reverse proxy
   const realIp = request.headers.get("x-real-ip");
   if (realIp) {
     return realIp.trim();
+  }
+  // 3. Fallback to first IP in x-forwarded-for
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
   }
   return "127.0.0.1";
 }
@@ -87,6 +97,7 @@ export function recordAdminAuthAttempt(ip: string, success: boolean): void {
     record.lockedUntil = now + windowMs;
   }
 
+  ensureStoreBounded(adminAuthStore);
   adminAuthStore.set(ip, record);
 }
 
@@ -101,6 +112,7 @@ export function checkReviewRateLimit(ip: string): { allowed: boolean; retryAfter
 
   let record = reviewStore.get(ip);
   if (!record || record.resetTime <= now) {
+    ensureStoreBounded(reviewStore);
     reviewStore.set(ip, { count: 1, resetTime: now + windowMs });
     return { allowed: true };
   }
@@ -126,6 +138,7 @@ export function checkDownloadRateLimit(ip: string): { allowed: boolean; retryAft
 
   let record = downloadStore.get(ip);
   if (!record || record.resetTime <= now) {
+    ensureStoreBounded(downloadStore);
     downloadStore.set(ip, { count: 1, resetTime: now + windowMs });
     return { allowed: true };
   }
@@ -151,6 +164,7 @@ export function checkProductsRateLimit(ip: string): { allowed: boolean; retryAft
 
   let record = productsStore.get(ip);
   if (!record || record.resetTime <= now) {
+    ensureStoreBounded(productsStore);
     productsStore.set(ip, { count: 1, resetTime: now + windowMs });
     return { allowed: true };
   }

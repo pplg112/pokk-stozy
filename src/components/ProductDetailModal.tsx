@@ -75,8 +75,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     setFormError("");
     setFormSuccess("");
     setComment("");
+    setHoneypot("");
     setImagePreview(null);
     setRating(5);
+    setHoverRating(0);
+    if (fileInputRef.current) fileInputRef.current.value = "";
 
     setLoadingReviews(true);
     fetch(`/api/reviews?productId=${product.id}`, { cache: "no-store" })

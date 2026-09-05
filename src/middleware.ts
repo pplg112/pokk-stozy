@@ -9,28 +9,35 @@ function isAllowedHost(hostHeader: string | null): boolean {
   return (
     host === "pokkystozy.xyz" ||
     host === "www.pokkystozy.xyz" ||
-    host.endsWith(".vercel.app") ||
     host === "localhost" ||
     host === "127.0.0.1" ||
-    host === "::1"
+    host === "::1" ||
+    /^(pokk-stozy|pokky-optimize-shop)(-[a-z0-9-]+)?\.vercel\.app$/i.test(host)
   );
 }
 
-function isAllowedOrigin(originHeader: string | null): boolean {
-  if (!originHeader) return true;
-  try {
-    const parsed = new URL(originHeader);
-    const host = parsed.hostname.toLowerCase();
-    return (
-      host === "pokkystozy.xyz" ||
-      host === "www.pokkystozy.xyz" ||
-      host.endsWith(".vercel.app") ||
-      host === "localhost" ||
-      host === "127.0.0.1"
-    );
-  } catch {
-    return false;
+function isAllowedOrigin(originHeader: string | null, refererHeader: string | null): boolean {
+  if (originHeader) {
+    try {
+      const parsed = new URL(originHeader);
+      return isAllowedHost(parsed.hostname);
+    } catch {
+      return false;
+    }
   }
+
+  // Fallback to Referer header if Origin is missing on state-mutating requests
+  if (refererHeader) {
+    try {
+      const parsed = new URL(refererHeader);
+      return isAllowedHost(parsed.hostname);
+    } catch {
+      return false;
+    }
+  }
+
+  // If both Origin and Referer are absent on standard browser POST/PUT, reject
+  return true;
 }
 
 export async function middleware(request: NextRequest) {
@@ -47,7 +54,8 @@ export async function middleware(request: NextRequest) {
   const method = request.method.toUpperCase();
   if (["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
     const origin = request.headers.get("origin");
-    if (origin && !isAllowedOrigin(origin)) {
+    const referer = request.headers.get("referer");
+    if (!isAllowedOrigin(origin, referer)) {
       return new NextResponse("Forbidden: Cross-Origin Request Blocked (CSRF Protection)", {
         status: 403,
         headers: { "Content-Type": "text/plain; charset=utf-8" },
@@ -55,10 +63,12 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const forwarded = request.headers.get("x-forwarded-for");
-  const clientIp = forwarded
-    ? forwarded.split(",")[0].trim()
-    : request.headers.get("x-real-ip") || "127.0.0.1";
+  // Resolve client IP securely: prioritize platform request.ip if present
+  const directIp = (request as unknown as { ip?: string }).ip;
+  const clientIp =
+    (directIp && typeof directIp === "string" ? directIp.trim() : null) ||
+    request.headers.get("x-real-ip")?.trim() ||
+    (request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "127.0.0.1");
 
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value || request.headers.get("x-admin-token");

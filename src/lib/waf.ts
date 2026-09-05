@@ -6,17 +6,30 @@ interface JailRecord {
   reason: string;
 }
 
+const MAX_JAIL_CAPACITY = 2000;
 const ipJail = new Map<string, JailRecord>();
 
-// Cleanup expired bans periodically
-setInterval(() => {
+/**
+ * Inline cleanup of expired bans (safe for Edge Runtime where background timers do not persist)
+ */
+function cleanupExpiredBans(): void {
   const now = Date.now();
   for (const [ip, record] of ipJail.entries()) {
     if (record.bannedUntil <= now) {
       ipJail.delete(ip);
     }
   }
-}, 300000); // every 5 minutes
+
+  // Hard cap to prevent memory exhaustion / OOM attacks
+  if (ipJail.size > MAX_JAIL_CAPACITY) {
+    let evicted = 0;
+    for (const key of ipJail.keys()) {
+      ipJail.delete(key);
+      evicted++;
+      if (evicted >= 500) break;
+    }
+  }
+}
 
 export function isIpBanned(ip: string): { banned: boolean; reason?: string; remainingSeconds?: number } {
   // Loopback / localhost is never banned
@@ -39,6 +52,17 @@ export function isIpBanned(ip: string): { banned: boolean; reason?: string; rema
 
 export function jailIp(ip: string, reason: string, durationMs: number = 2 * 60 * 60 * 1000): void {
   if (ip === "127.0.0.1" || ip === "::1" || ip === "localhost") return;
+
+  // Perform inline cleanup if jail is approaching capacity
+  if (ipJail.size >= MAX_JAIL_CAPACITY) {
+    cleanupExpiredBans();
+  }
+
+  // If still at capacity after cleanup, drop the oldest record
+  if (ipJail.size >= MAX_JAIL_CAPACITY) {
+    const oldestKey = ipJail.keys().next().value;
+    if (oldestKey) ipJail.delete(oldestKey);
+  }
 
   ipJail.set(ip, {
     bannedUntil: Date.now() + durationMs,

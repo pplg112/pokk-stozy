@@ -74,15 +74,11 @@ export async function createSessionToken(clientIp: string = ""): Promise<string>
 
 /**
  * Verify a cryptographic session token
- * Returns true if valid and within 7-day lifespan.
+ * Strictly requires valid HMAC signature within 7-day lifespan.
+ * Static token fallback removed to prevent secret-leak bypass.
  */
 export async function verifySessionToken(token: string | undefined | null, clientIp?: string): Promise<boolean> {
   if (!token || typeof token !== "string") return false;
-
-  // Backwards compatibility with static token via constant-time compare
-  if (timingSafeCompare(token, ADMIN_SECRET_TOKEN)) {
-    return true;
-  }
 
   const parts = token.split(".");
   if (parts.length !== 4) return false;

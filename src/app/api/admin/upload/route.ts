@@ -9,10 +9,16 @@ export async function POST(request: NextRequest) {
 
   try {
     const formData = await request.formData();
-    const file = formData.get("file") as File | null;
+    const file = formData.get("file");
 
-    if (!file) {
-      return NextResponse.json({ success: false, error: "No file uploaded" }, { status: 400 });
+    if (
+      !file ||
+      typeof file === "string" ||
+      typeof (file as any).arrayBuffer !== "function" ||
+      typeof file.name !== "string" ||
+      typeof file.size !== "number"
+    ) {
+      return NextResponse.json({ success: false, error: "กรุณาเลือกไฟล์ที่ถูกต้องสำหรับการอัปโหลด" }, { status: 400 });
     }
 
     if (file.size > 4.5 * 1024 * 1024) {

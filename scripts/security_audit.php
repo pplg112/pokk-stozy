@@ -101,9 +101,16 @@ echo " Target: " . $targetUrl . "\n";
 echo " Time:   " . date('Y-m-d H:i:s T') . "\n";
 echo str_repeat('#', 65) . "\n";
 
+// Authenticate dynamically to get valid HMAC-SHA256 session token
+$authResp = request($targetUrl . '/api/admin/auth', 'POST', [
+    'Content-Type' => 'application/json',
+], json_encode(['password' => 'pgm2551dd']));
+$authJson = json_decode($authResp['body'], true);
+$adminToken = $authJson['token'] ?? '';
+
 // 1. SSL & Security Headers
 printHeader('1. HTTP Security Headers & TLS Verification');
-$home = request($targetUrl, 'GET', ['x-admin-token' => 'pokky_admin_session_auth_sec_2026']);
+$home = request($targetUrl, 'GET', $adminToken ? ['x-admin-token' => $adminToken] : []);
 runTest('Homepage HTTP 200 OK', $home['code'] === 200, 'Status: ' . $home['code']);
 runTest('Content-Security-Policy (CSP) Present', isset($home['headers']['content-security-policy']), 'CSP: ' . ($home['headers']['content-security-policy'] ?? 'Missing'));
 runTest('Strict-Transport-Security (HSTS) Active', isset($home['headers']['strict-transport-security']), 'HSTS: ' . ($home['headers']['strict-transport-security'] ?? 'Missing'));
@@ -128,7 +135,7 @@ runTest('sqlmap User-Agent Blocked with 403 Forbidden', $scannerTest['code'] ===
 
 // 4. Products Catalog API & Protection
 printHeader('4. Products Catalog API & Protection');
-$prodTest = request($targetUrl . '/api/products', 'GET', ['x-admin-token' => 'pokky_admin_session_auth_sec_2026']);
+$prodTest = request($targetUrl . '/api/products', 'GET', $adminToken ? ['x-admin-token' => $adminToken] : []);
 $prodJson = json_decode($prodTest['body'], true);
 runTest('Products API returns 200 OK', $prodTest['code'] === 200);
 runTest('Products catalog returns valid package list', is_array($prodJson['products'] ?? null) && count($prodJson['products']) > 0, 'Packages count: ' . count($prodJson['products'] ?? []));
@@ -136,11 +143,10 @@ runTest('Products catalog returns valid package list', is_array($prodJson['produ
 // 5. Thai Homoglyph & Obfuscated Spam Evasion Test
 printHeader('5. Thai Homoglyph & Zero-Width Anti-Spam Evasion');
 $sampleId = $prodJson['products'][0]['id'] ?? 'pokky-test';
-$spamTest = request($targetUrl . '/api/reviews', 'POST', [
+$spamTest = request($targetUrl . '/api/reviews', 'POST', array_merge([
     'Content-Type' => 'application/json',
     'Origin' => $targetUrl,
-    'x-admin-token' => 'pokky_admin_session_auth_sec_2026',
-], json_encode([
+], $adminToken ? ['x-admin-token' => $adminToken] : []), json_encode([
     'productId' => $sampleId,
     'authorName' => 'ThaiSpammer',
     'comment' => 'ส มั ค ร เ ว็ บ ต ร ง วันนี้ แจกเครดิต',
@@ -152,11 +158,10 @@ runTest('Spaced Thai Spam (เ ว็ บ ต ร ง) Blocked', $spamBlocked, '
 
 // 6. Review Honeypot Bot Trap
 printHeader('6. Invisible Honeypot Anti-Bot Field');
-$honeypotTest = request($targetUrl . '/api/reviews', 'POST', [
+$honeypotTest = request($targetUrl . '/api/reviews', 'POST', array_merge([
     'Content-Type' => 'application/json',
     'Origin' => $targetUrl,
-    'x-admin-token' => 'pokky_admin_session_auth_sec_2026',
-], json_encode([
+], $adminToken ? ['x-admin-token' => $adminToken] : []), json_encode([
     'productId' => $sampleId,
     'authorName' => 'BotUser',
     'comment' => 'Regular comment text',

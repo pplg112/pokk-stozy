@@ -72,16 +72,21 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const isRevert = searchParams.get("type") === "revert";
 
-    // Increment download counter
-    await db.incrementDownload(id);
-
     // Secure external redirect (SSRF & Open-Redirect protected)
     if (!isRevert && product.downloadUrl && product.downloadUrl.trim().startsWith("http")) {
       const targetUrl = product.downloadUrl.trim();
-      if (isSafeRedirectUrl(targetUrl)) {
-        return NextResponse.redirect(targetUrl, 302);
+      if (!isSafeRedirectUrl(targetUrl)) {
+        return NextResponse.json(
+          { success: false, error: "Invalid or unsafe download destination" },
+          { status: 400 }
+        );
       }
+      await db.incrementDownload(id);
+      return NextResponse.redirect(targetUrl, 302);
     }
+
+    // Increment download counter for verified file delivery
+    await db.incrementDownload(id);
 
     const safeFilename = product.name
       .replace(/[^a-zA-Z0-9_\-\u0E00-\u0E7F]/g, "_")

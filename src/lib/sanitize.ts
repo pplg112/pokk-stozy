@@ -8,16 +8,18 @@ export function sanitizeText(str: string): string {
   return str
     .replace(/\0/g, "") // remove null bytes
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "") // remove script tags
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "") // remove style tags
     .replace(/<[^>]+>/g, "") // remove all HTML tags
     .replace(/javascript:/gi, "") // strip pseudo-protocol
+    .replace(/data:text\/html/gi, "") // strip html data uris
     .replace(/on\w+\s*=/gi, "") // strip event handlers like onerror=, onclick=
-    .replace(/[<>'"&]/g, (char) => {
+    .replace(/[&<>"']/g, (char) => {
       switch (char) {
+        case "&": return "&amp;";
         case "<": return "&lt;";
         case ">": return "&gt;";
-        case "'": return "&#39;";
         case '"': return "&quot;";
-        case "&": return "&amp;";
+        case "'": return "&#39;";
         default: return char;
       }
     })
@@ -25,10 +27,11 @@ export function sanitizeText(str: string): string {
 }
 
 /**
- * Protect against JSON Object Prototype Pollution
+ * Protect against JSON Object Prototype Pollution with maximum recursion depth to prevent stack overflow
  */
-export function containsPrototypePollution(obj: any): boolean {
+export function containsPrototypePollution(obj: any, depth = 0): boolean {
   if (!obj || typeof obj !== "object") return false;
+  if (depth > 10) return true; // Reject deeply nested structures as potential DoS exploit
 
   const dangerousKeys = ["__proto__", "constructor", "prototype"];
   
@@ -37,7 +40,7 @@ export function containsPrototypePollution(obj: any): boolean {
       return true;
     }
     if (typeof obj[key] === "object" && obj[key] !== null) {
-      if (containsPrototypePollution(obj[key])) {
+      if (containsPrototypePollution(obj[key], depth + 1)) {
         return true;
       }
     }
@@ -61,13 +64,37 @@ export function normalizeSpamText(text: string): { normalized: string; compacted
 
   // 3. Map common cross-language visual homoglyphs (Cyrillic/Greek lookalikes to Latin)
   const homoglyphs: Record<string, string> = {
-    "а": "a", "с": "c", "е": "e", "о": "o", "р": "p", "ѕ": "s",
-    "х": "x", "у": "y", "і": "i", "ј": "j", "А": "A", "В": "B",
-    "С": "C", "Е": "E", "Н": "H", "І": "I", "Ј": "J", "К": "K",
-    "М": "M", "О": "O", "Р": "P", "Т": "T", "Х": "X", "@": "a",
-    "$": "s", "0": "o", "1": "i", "!": "i"
+    "\u0430": "a", // Cyrillic small a
+    "\u0441": "c", // Cyrillic small es
+    "\u0435": "e", // Cyrillic small ie
+    "\u043E": "o", // Cyrillic small o
+    "\u0440": "p", // Cyrillic small er
+    "\u0455": "s", // Cyrillic small dze
+    "\u0445": "x", // Cyrillic small ha
+    "\u0443": "y", // Cyrillic small u
+    "\u0456": "i", // Cyrillic small i
+    "\u0458": "j", // Cyrillic small je
+    "\u0410": "A", // Cyrillic capital A
+    "\u0412": "B", // Cyrillic capital Ve
+    "\u0421": "C", // Cyrillic capital Es
+    "\u0415": "E", // Cyrillic capital Ie
+    "\u041D": "H", // Cyrillic capital En
+    "\u0406": "I", // Cyrillic capital I
+    "\u0408": "J", // Cyrillic capital Je
+    "\u041A": "K", // Cyrillic capital Ka
+    "\u041C": "M", // Cyrillic capital Em
+    "\u041E": "O", // Cyrillic capital O
+    "\u0420": "P", // Cyrillic capital Er
+    "\u0422": "T", // Cyrillic capital Te
+    "\u0425": "X", // Cyrillic capital Ha
+    "@": "a",
+    "$": "s",
+    "0": "o",
+    "1": "i",
+    "!": "i"
   };
-  normalized = normalized.replace(/[асeорѕхуіјАВСЕНІЈКМОРТХ@$01!]/g, (char) => homoglyphs[char] || char);
+  const homoglyphRegex = /[\u0406\u0408\u0410\u0412\u0415\u041A\u041C\u041D\u041E\u0420\u0421\u0422\u0425\u0430\u0431\u0435\u043E\u0440\u0441\u0443\u0445\u0455\u0456\u0458@$01!]/g;
+  normalized = normalized.replace(homoglyphRegex, (char) => homoglyphs[char] || char);
 
   // 4. Compacted version (strip all spaces and punctuation to defeat spaced evasion e.g. "บ า ค า ร่ า" or "p . g")
   const compacted = normalized.replace(/[\s\.\-_,\/\\~*+:=#|?!()[\]{}'"`]/g, "").toLowerCase();
