@@ -9,7 +9,7 @@ interface LoadingScreenProps {
 }
 
 const DEFAULT_STATUS_MESSAGES = [
-  "กำลังเชื่อมต่อคลังข้อมูล Pokky Optimize...",
+  "กำลังเชื่อมต่อคลังข้อมูล Pokky Stozy...",
   "กำลังตรวจสอบสถานะเซิร์ฟเวอร์และความปลอดภัย...",
   "กำลังจัดเตรียมแพ็กเกจสคริปต์ความเร็วสูง...",
   "กำลังปรับแต่งการเชื่อมต่อให้มี Latency ต่ำสุด...",
@@ -65,7 +65,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
           <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#0d1117] border border-emerald-500/40 p-3 shadow-[0_0_30px_rgba(16,185,129,0.3)] flex items-center justify-center">
             <img
               src="/logo.png"
-              alt="Pokky Optimize"
+              alt="Pokky Stozy"
               className="w-full h-full object-contain drop-shadow-[0_0_12px_rgba(74,222,128,0.5)] animate-[pulse_2s_ease-in-out_infinite]"
             />
           </div>
@@ -77,7 +77,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
             POKKY
           </span>
           <span className="font-black tracking-wider text-xl sm:text-2xl text-green-400 font-sans">
-            OPTIMIZE
+            STOZY
           </span>
         </div>
 

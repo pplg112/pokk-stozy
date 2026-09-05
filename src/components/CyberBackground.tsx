@@ -1,18 +1,19 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef } from "react";
 
 export const CyberBackground: React.FC = () => {
-  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 50, y: 30 });
+  const spotlightRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let frameId: number;
     const handleMouseMove = (e: MouseEvent) => {
       cancelAnimationFrame(frameId);
       frameId = requestAnimationFrame(() => {
-        const x = (e.clientX / window.innerWidth) * 100;
-        const y = (e.clientY / window.innerHeight) * 100;
-        setMousePos({ x, y });
+        if (!spotlightRef.current) return;
+        const x = ((e.clientX / window.innerWidth) * 100).toFixed(1);
+        const y = ((e.clientY / window.innerHeight) * 100).toFixed(1);
+        spotlightRef.current.style.background = `radial-gradient(650px circle at ${x}% ${y}%, rgba(34, 197, 94, 0.075), rgba(6, 182, 212, 0.04), transparent 70%)`;
       });
     };
 
@@ -54,9 +55,10 @@ export const CyberBackground: React.FC = () => {
       
       {/* 1. Interactive Cursor Glow Spotlight (Desktop) */}
       <div
-        className="absolute inset-0 transition-opacity duration-700 opacity-80"
+        ref={spotlightRef}
+        className="absolute inset-0 transition-opacity duration-700 opacity-80 will-change-[background]"
         style={{
-          background: `radial-gradient(650px circle at ${mousePos.x}% ${mousePos.y}%, rgba(34, 197, 94, 0.075), rgba(6, 182, 212, 0.04), transparent 70%)`,
+          background: `radial-gradient(650px circle at 50% 30%, rgba(34, 197, 94, 0.075), rgba(6, 182, 212, 0.04), transparent 70%)`,
         }}
       />
 

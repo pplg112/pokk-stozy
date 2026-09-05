@@ -16,8 +16,10 @@ export const Navbar: React.FC<NavbarProps> = () => {
         <a href="#" className="flex items-center gap-2.5 sm:gap-3 shrink-0 group py-1">
           <img
             src="/logo.png"
-            alt="Pokky Optimize"
-            className="h-9 sm:h-11 w-auto object-contain transition-transform group-hover:scale-105 drop-shadow-[0_0_15px_rgba(74,222,128,0.25)]"
+            alt="Pokky Stozy"
+            loading="eager"
+            fetchPriority="high"
+            className="h-10 sm:h-12 w-auto object-contain transition-transform group-hover:scale-105 drop-shadow-[0_0_20px_rgba(74,222,128,0.35)]"
           />
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
@@ -25,11 +27,11 @@ export const Navbar: React.FC<NavbarProps> = () => {
                 POKKY
               </span>
               <span className="font-extrabold tracking-wide text-base sm:text-xl text-green-400 font-sans leading-tight">
-                OPTIMIZE
+                STOZY
               </span>
             </div>
             <span className="text-[10px] sm:text-[11px] font-mono tracking-wider text-green-400/90 uppercase font-semibold">
-              FREE DOWNLOAD HUB
+              OPTIMIZE • SETTING • STORE
             </span>
           </div>
         </a>

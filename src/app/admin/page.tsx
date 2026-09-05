@@ -681,7 +681,7 @@ export default function AdminDashboardPage() {
             <img src="/logo.png" alt="Logo" className="h-11 w-auto" />
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-extrabold text-lg text-white">POKKY OPTIMIZE</span>
+                <span className="font-extrabold text-lg text-white">POKKY STOZY</span>
                 <span className="px-2 py-0.5 rounded bg-green-500/20 text-green-400 font-mono text-xs font-bold border border-green-500/30">
                   ADMIN PORTAL
                 </span>

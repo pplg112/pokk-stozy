@@ -18,7 +18,7 @@ export const StoreHero: React.FC = () => {
           <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400"></span>
         </span>
         <span className="font-semibold tracking-wide">
-          POKKY OPTIMIZE HUB • อัปเดตแพตช์ 2026 • แจกฟรี 100% ไม่มีค่าบริการ
+          POKKY STOZY HUB • อัปเดตแพตช์ 2026 • แจกฟรี 100% ไม่มีค่าบริการ
         </span>
       </div>
 

@@ -12,12 +12,12 @@ export const Footer: React.FC = () => {
         <div className="flex items-center gap-3.5">
           <img
             src="/logo.png"
-            alt="Pokky Optimize"
+            alt="Pokky Stozy"
             className="h-10 sm:h-11 w-auto object-contain drop-shadow"
           />
           <div>
             <div className="font-extrabold text-sm sm:text-base text-white font-sans tracking-wide">
-              POKKY OPTIMIZE
+              POKKY STOZY
             </div>
             <div className="text-xs text-slate-400">
               ศูนย์รวมสคริปต์ปรับแต่งคอมพิวเตอร์ระดับ Esports ปลอดภัย 100% มีไฟล์ Revert
@@ -36,7 +36,7 @@ export const Footer: React.FC = () => {
             <img src="/discord-logo.png" alt="Discord" className="h-4 sm:h-4.5 w-auto object-contain group-hover:scale-110 transition-transform" />
             Discord Community
           </a>
-          <span className="text-slate-500 text-xs">&copy; {new Date().getFullYear()} Pokky Optimize.</span>
+          <span className="text-slate-500 text-xs">&copy; {new Date().getFullYear()} Pokky Stozy.</span>
         </div>
 
       </div>

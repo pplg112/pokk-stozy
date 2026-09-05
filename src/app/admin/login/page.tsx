@@ -61,7 +61,7 @@ export default function AdminLoginPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-green-500/10 border border-green-500/20 text-xs font-mono text-green-400 mb-3">
             <ShieldCheck className="w-4 h-4 text-green-400" />
-            <span>POKKY OPTIMIZE ADMIN SECURITY</span>
+            <span>POKKY STOZY ADMIN SECURITY</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             เข้าสู่ระบบแอดมิน
