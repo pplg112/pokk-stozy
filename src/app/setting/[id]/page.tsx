@@ -44,7 +44,7 @@ export default function SettingDetailPage({ params }: PageProps) {
   const [product, setProduct] = useState<DigitalProduct | null>(null);
   const [allProducts, setAllProducts] = useState<DigitalProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "install" | "code" | "reviews">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "code" | "reviews">("overview");
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
   const [copiedRevert, setCopiedRevert] = useState(false);
@@ -323,18 +323,6 @@ export default function SettingDetailPage({ params }: PageProps) {
               </button>
 
               <button
-                onClick={() => setActiveTab("install")}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                  activeTab === "install"
-                    ? "bg-green-400 text-slate-950 shadow-md font-bold"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <Cpu className="w-4 h-4" />
-                <span>วิธีติดตั้ง & ความเข้ากันได้</span>
-              </button>
-
-              <button
                 onClick={() => setActiveTab("code")}
                 className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                   activeTab === "code"
@@ -420,79 +408,7 @@ export default function SettingDetailPage({ params }: PageProps) {
               </div>
             )}
 
-            {/* Tab 2: Installation & Requirements */}
-            {activeTab === "install" && (
-              <div className="space-y-6 animate-fadeIn">
-                <div className="p-6 rounded-3xl bg-[#0b0e17] border border-white/10 space-y-4">
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <Cpu className="w-5 h-5 text-green-400" />
-                    <span>ขั้นตอนการติดตั้งและเปิดใช้งาน</span>
-                  </h3>
-
-                  <div className="space-y-3 text-xs sm:text-sm">
-                    <div className="p-4 rounded-2xl bg-black/40 border border-white/5 flex items-start gap-3">
-                      <span className="w-6 h-6 rounded-full bg-green-400 text-slate-950 font-bold flex items-center justify-center shrink-0 text-xs">
-                        1
-                      </span>
-                      <div>
-                        <h5 className="font-bold text-white">ดาวน์โหลดและแตกไฟล์ (Extract ZIP)</h5>
-                        <p className="text-slate-400 text-xs mt-0.5">
-                          กดดาวน์โหลดไฟล์จากหน้าเว็บ แตกไฟล์ไว้บนโฟลเดอร์ในคอมพิวเตอร์ของคุณ
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="p-4 rounded-2xl bg-black/40 border border-white/5 flex items-start gap-3">
-                      <span className="w-6 h-6 rounded-full bg-green-400 text-slate-950 font-bold flex items-center justify-center shrink-0 text-xs">
-                        2
-                      </span>
-                      <div>
-                        <h5 className="font-bold text-white">คลิกขวาเลือก "Run as administrator"</h5>
-                        <p className="text-slate-400 text-xs mt-0.5">
-                          จำเป็นต้องรันด้วยสิทธิ์แอดมิน เพื่อให้สคริปต์สามารถปรับตั้งค่าระบบ Registry และ Services ของ Windows ได้ถูกต้อง
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="p-4 rounded-2xl bg-black/40 border border-white/5 flex items-start gap-3">
-                      <span className="w-6 h-6 rounded-full bg-green-400 text-slate-950 font-bold flex items-center justify-center shrink-0 text-xs">
-                        3
-                      </span>
-                      <div>
-                        <h5 className="font-bold text-white">รีสตาร์ตเครื่องคอมพิวเตอร์ 1 ครั้ง</h5>
-                        <p className="text-slate-400 text-xs mt-0.5">
-                          เพื่อให้ค่า Registry และการจัดสรรคิวงานของ CPU/Network ทำงานได้อย่างสมบูรณ์แบบ
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Compatibility */}
-                <div className="p-6 rounded-3xl bg-[#0b0e17] border border-white/10 space-y-3">
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-cyan-400" />
-                    <span>ความเข้ากันได้ของระบบ (Compatibility)</span>
-                  </h3>
-                  <div className="p-4 rounded-2xl bg-black/40 border border-white/5 space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">ระบบปฏิบัติการที่รองรับ:</span>
-                      <span className="text-white font-bold">{product.compatibility || "Windows 10 / 11 (64-bit ทุกรุ่น)"}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">สิทธิ์ในการรัน:</span>
-                      <span className="text-green-400 font-bold">Administrator Privileges</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">รองรับเกมแนว:</span>
-                      <span className="text-cyan-300 font-bold">Valorant, FiveM, CS2, Apex, PUBG, ทั่วไป</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Tab 3: Source Code Transparency */}
+            {/* Tab 2: Source Code Transparency */}
             {activeTab === "code" && (
               <div className="space-y-6 animate-fadeIn">
                 <div className="p-6 rounded-3xl bg-[#0b0e17] border border-white/10 space-y-4">
