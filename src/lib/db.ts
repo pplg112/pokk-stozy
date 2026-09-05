@@ -568,6 +568,12 @@ export const db = {
   },
 
   saveUploadedBlob(fileId: string, filename: string, content: string) {
+    const keys = Object.keys(fileStorage);
+    if (keys.length >= 50) {
+      for (const k of keys.slice(0, 10)) {
+        delete fileStorage[k];
+      }
+    }
     fileStorage[fileId] = { filename, content };
     return fileId;
   },

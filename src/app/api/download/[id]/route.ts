@@ -2,6 +2,33 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getClientIp, checkDownloadRateLimit } from "@/lib/rateLimit";
 
+function isSafeRedirectUrl(urlStr: string): boolean {
+  try {
+    const parsed = new URL(urlStr);
+    // Enforce HTTP/HTTPS only
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
+
+    const hostname = parsed.hostname.toLowerCase();
+
+    // Prevent SSRF / Open Redirect to private networks, loopback, or cloud metadata services
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1" ||
+      hostname === "169.254.169.254" ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("192.168.") ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)
+    ) {
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -24,6 +51,15 @@ export async function GET(
 
   try {
     const { id } = await params;
+
+    // Strict parameter validation against Path Traversal
+    if (!id || typeof id !== "string" || !/^[a-zA-Z0-9_\-]+$/.test(id)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid package ID format" },
+        { status: 400 }
+      );
+    }
+
     const product = await db.getProductById(id);
 
     if (!product) {
@@ -39,8 +75,12 @@ export async function GET(
     // Increment download counter
     await db.incrementDownload(id);
 
+    // Secure external redirect (SSRF & Open-Redirect protected)
     if (!isRevert && product.downloadUrl && product.downloadUrl.trim().startsWith("http")) {
-      return NextResponse.redirect(product.downloadUrl.trim(), 302);
+      const targetUrl = product.downloadUrl.trim();
+      if (isSafeRedirectUrl(targetUrl)) {
+        return NextResponse.redirect(targetUrl, 302);
+      }
     }
 
     const safeFilename = product.name

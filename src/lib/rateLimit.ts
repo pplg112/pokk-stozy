@@ -6,17 +6,25 @@ interface RateLimitRecord {
   lockedUntil?: number;
 }
 
-// In-memory rate limiting cache
+// In-memory rate limiting caches with bounded capacity to prevent OOM attacks
+const MAX_STORE_SIZE = 5000;
 const adminAuthStore = new Map<string, RateLimitRecord>();
 const reviewStore = new Map<string, RateLimitRecord>();
 const downloadStore = new Map<string, RateLimitRecord>();
+const productsStore = new Map<string, RateLimitRecord>();
 
-// Periodic cleanup to avoid memory leak
 function cleanStore(store: Map<string, RateLimitRecord>) {
   const now = Date.now();
   for (const [key, val] of store.entries()) {
     if (val.resetTime < now && (!val.lockedUntil || val.lockedUntil < now)) {
       store.delete(key);
+    }
+  }
+  // Hard cap to avoid memory exhaustion DoS
+  if (store.size > MAX_STORE_SIZE) {
+    const keysToDelete = Array.from(store.keys()).slice(0, 1000);
+    for (const k of keysToDelete) {
+      store.delete(k);
     }
   }
 }
@@ -25,6 +33,7 @@ setInterval(() => {
   cleanStore(adminAuthStore);
   cleanStore(reviewStore);
   cleanStore(downloadStore);
+  cleanStore(productsStore);
 }, 60000);
 
 export function getClientIp(request: NextRequest): string {
@@ -87,7 +96,7 @@ export function recordAdminAuthAttempt(ip: string, success: boolean): void {
  */
 export function checkReviewRateLimit(ip: string): { allowed: boolean; retryAfterSeconds?: number } {
   const now = Date.now();
-  const windowMs = 60 * 1000; // 1 minute
+  const windowMs = 60 * 1000;
   const maxLimit = 2;
 
   let record = reviewStore.get(ip);
@@ -128,5 +137,30 @@ export function checkDownloadRateLimit(ip: string): { allowed: boolean; retryAft
 
   record.count += 1;
   downloadStore.set(ip, record);
+  return { allowed: true };
+}
+
+/**
+ * Products Catalog Anti-Scraping / Connection Flooding Rate Limiting
+ * Rule: Max 60 catalog requests per 60 seconds per IP
+ */
+export function checkProductsRateLimit(ip: string): { allowed: boolean; retryAfterSeconds?: number } {
+  const now = Date.now();
+  const windowMs = 60 * 1000;
+  const maxLimit = 60;
+
+  let record = productsStore.get(ip);
+  if (!record || record.resetTime <= now) {
+    productsStore.set(ip, { count: 1, resetTime: now + windowMs });
+    return { allowed: true };
+  }
+
+  if (record.count >= maxLimit) {
+    const retryAfterSeconds = Math.ceil((record.resetTime - now) / 1000);
+    return { allowed: false, retryAfterSeconds };
+  }
+
+  record.count += 1;
+  productsStore.set(ip, record);
   return { allowed: true };
 }

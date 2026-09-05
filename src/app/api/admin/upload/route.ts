@@ -47,14 +47,21 @@ export async function POST(request: NextRequest) {
         const zipEntries = zip.getEntries().filter((e: any) => !e.isDirectory);
 
         const includedFiles = zipEntries.map((e: any) => {
-          const lower = e.entryName.toLowerCase();
+          // Zip Slip Defense: sanitize entryName against path traversal
+          const safeEntryName = e.entryName
+            .replace(/\0/g, "")
+            .replace(/^[\/\\]+/, "")
+            .replace(/(?:\.\.[\/\\])+/g, "")
+            .replace(/[\/\\]\.\.$/, "");
+
+          const lower = safeEntryName.toLowerCase();
           let desc = "ไฟล์ส่วนประกอบในแพ็กเกจ";
           if (lower.endsWith(".reg")) desc = "ไฟล์ Registry ปรับแต่งระบบ Windows";
           else if (lower.endsWith(".cmd") || lower.endsWith(".bat")) desc = "ไฟล์สคริปต์คำสั่งการทำงานหลัก";
           else if (lower.endsWith(".ps1")) desc = "สคริปต์ PowerShell";
           else if (lower.endsWith(".txt")) desc = "คู่มือหรือข้อความอธิบาย";
           return {
-            filename: e.entryName,
+            filename: safeEntryName,
             description: desc,
           };
         });
