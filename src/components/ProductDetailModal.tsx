@@ -90,6 +90,21 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       });
   }, [product]);
 
+  // Handle Escape key to close expanded image first, or modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (expandedImage) {
+          setExpandedImage(null);
+        } else {
+          onClose();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [expandedImage, onClose]);
+
   if (!product) return null;
 
   // Handle client-side image compression
@@ -219,15 +234,23 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           {/* Modal Scrollable Content */}
           <div className="p-5 sm:p-6 space-y-5 overflow-y-auto">
             
-            {/* Cover Image Banner in Modal (Full View 16:9, No Crop) */}
+            {/* Cover Image Banner in Modal (Full View 16:9, No Crop, Click to Expand) */}
             {product.imageUrl && (
-              <div className="relative w-full aspect-video max-h-[380px] sm:max-h-[440px] rounded-2xl overflow-hidden border border-white/10 bg-black/80 shadow-xl flex items-center justify-center">
+              <div 
+                onClick={() => setExpandedImage(product.imageUrl || null)}
+                className="relative w-full aspect-video max-h-[380px] sm:max-h-[440px] rounded-2xl overflow-hidden border border-white/10 hover:border-green-400/40 bg-black/80 shadow-xl flex items-center justify-center group cursor-pointer transition-colors"
+                title="คลิกเพื่อดูรูปภาพขนาดเต็ม"
+              >
                 <img
                   src={product.imageUrl}
                   alt={product.name}
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain transition-transform group-hover:scale-[1.02]"
                 />
-                <div className="absolute top-3 right-3">
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-mono">
+                  <ZoomIn className="w-4 h-4" />
+                  <span>ดูรูปภาพขนาดเต็ม</span>
+                </div>
+                <div className="absolute top-3 right-3 z-10">
                   <span className="px-3 py-1 rounded-lg bg-green-500/30 backdrop-blur-md border border-green-500/50 text-green-300 font-mono text-xs font-bold shadow-lg">
                     แจกฟรี 100%
                   </span>
@@ -464,14 +487,19 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   {/* Image Attachment Preview Thumbnail */}
                   {imagePreview && (
                     <div className="relative inline-block mt-1">
-                      <div className="p-1 rounded-xl bg-black/50 border border-white/15 inline-block group">
+                      <div 
+                        onClick={() => setExpandedImage(imagePreview)}
+                        className="p-1 rounded-xl bg-black/50 border border-white/15 hover:border-green-400 inline-block group cursor-pointer transition-colors"
+                        title="คลิกเพื่อดูรูปขยาย"
+                      >
                         <img
                           src={imagePreview}
                           alt="Review Preview"
                           className="h-20 w-auto rounded-lg object-cover max-w-xs"
                         />
-                        <span className="block text-[10px] font-mono text-slate-400 mt-1 px-1">
-                          รูปพร้อมแนบไปกับรีวิว
+                        <span className="block text-[10px] font-mono text-slate-400 group-hover:text-green-300 mt-1 px-1 flex items-center gap-1">
+                          <ZoomIn className="w-3 h-3" />
+                          รูปพร้อมแนบ (คลิกเพื่อดูรูปขยาย)
                         </span>
                       </div>
                     </div>
@@ -603,7 +631,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                           <div className="pt-1">
                             <button
                               type="button"
-                              onClick={() => setExpandedImage(rev.imageUrl || null)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedImage(rev.imageUrl || null);
+                              }}
                               className="relative inline-block rounded-xl overflow-hidden border border-white/15 hover:border-green-400 transition-all group cursor-pointer"
                               title="คลิกเพื่อดูรูปภาพขนาดเต็ม"
                             >
@@ -612,8 +643,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                                 alt="รูปภาพแนบจากรีวิว"
                                 className="h-28 sm:h-36 w-auto max-w-xs object-cover rounded-xl transition-transform group-hover:scale-105"
                               />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-mono">
-                                <ZoomIn className="w-4 h-4" />
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-mono font-bold">
+                                <ZoomIn className="w-4 h-4 text-green-400" />
                                 <span>ดูรูปขยาย</span>
                               </div>
                             </button>
@@ -669,23 +700,38 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       {/* Lightbox Modal for Attached Image Zoom */}
       {expandedImage && (
         <div 
-          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/95 backdrop-blur-md cursor-zoom-out select-none"
           onClick={() => setExpandedImage(null)}
         >
-          <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl border border-white/20 bg-[#08090d] p-2">
-            <button
-              onClick={() => setExpandedImage(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-black/80 text-white hover:bg-black transition-colors z-10"
-              title="ปิดรูปขยาย"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <img
-              src={expandedImage}
-              alt="รูปภาพขนาดเต็ม"
-              className="max-h-[85vh] max-w-full object-contain rounded-xl"
-              onClick={(e) => e.stopPropagation()}
-            />
+          <div 
+            className="relative max-w-5xl max-h-[92vh] flex flex-col items-center justify-center cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Action Bar */}
+            <div className="w-full flex items-center justify-between pb-2 px-1 text-slate-300 font-mono text-xs">
+              <span className="flex items-center gap-1.5">
+                <ZoomIn className="w-3.5 h-3.5 text-green-400" />
+                <span>ภาพขยายเต็มจอ</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setExpandedImage(null)}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white hover:text-green-400 text-xs font-mono transition-all cursor-pointer shadow-lg"
+                title="ปิดรูปขยาย (Esc)"
+              >
+                <X className="w-4 h-4" />
+                <span>ปิด (ESC)</span>
+              </button>
+            </div>
+
+            {/* Expanded Image Container */}
+            <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-[#08090d] shadow-2xl p-1 sm:p-2 flex items-center justify-center">
+              <img
+                src={expandedImage}
+                alt="รูปภาพขนาดเต็ม"
+                className="max-h-[82vh] max-w-full object-contain rounded-xl select-none"
+              />
+            </div>
           </div>
         </div>
       )}
