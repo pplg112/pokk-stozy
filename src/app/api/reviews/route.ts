@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getClientIp, checkReviewRateLimit } from "@/lib/rateLimit";
-import { sanitizeText, isSpamContent, isValidImageBase64 } from "@/lib/sanitize";
+import { sanitizeText, isSpamContent, isValidImageBase64, containsPrototypePollution } from "@/lib/sanitize";
+import { jailIp } from "@/lib/waf";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -36,8 +37,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  // 1. Anti-Spam Rate Limiting (2 reviews / 60 seconds per IP)
   const ip = getClientIp(request);
+
+  // 1. Anti-Spam Rate Limiting (2 reviews / 60 seconds per IP)
   const rateLimitStatus = checkReviewRateLimit(ip);
   if (!rateLimitStatus.allowed) {
     return NextResponse.json(
@@ -54,7 +56,27 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { productId, authorName, rating, comment, imageUrl } = body;
+
+    // 2. Prototype Pollution Defense
+    if (containsPrototypePollution(body)) {
+      jailIp(ip, "Prototype Pollution Attempt", 86400000);
+      return NextResponse.json(
+        { success: false, error: "Invalid payload: Security violation" },
+        { status: 400 }
+      );
+    }
+
+    const { productId, authorName, rating, comment, imageUrl, website_confirm } = body;
+
+    // 3. Honeypot Anti-Bot Trap
+    // Real humans will not fill website_confirm (hidden field). Automated bots fill it.
+    if (website_confirm && typeof website_confirm === "string" && website_confirm.trim().length > 0) {
+      jailIp(ip, "Bot detected via Review Honeypot Trap", 86400000);
+      return NextResponse.json(
+        { success: false, error: "Bot activity detected" },
+        { status: 400 }
+      );
+    }
 
     if (!productId || typeof productId !== "string") {
       return NextResponse.json(
@@ -79,7 +101,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Sanitize & Validate Comment Content
+    // 4. Sanitize & Validate Comment Content
     const cleanComment = sanitizeText(comment || "");
     if (!cleanComment || cleanComment.length === 0) {
       return NextResponse.json(
@@ -95,7 +117,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Spam & Phishing Link Detection
+    // 5. Spam & Phishing Link Detection
     if (isSpamContent(cleanComment)) {
       return NextResponse.json(
         { success: false, error: "ตรวจพบข้อความหรือลิงก์ที่ไม่ได้รับอนุญาต" },
@@ -103,7 +125,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Sanitize Author Name
+    // 6. Sanitize Author Name
     let cleanAuthor = sanitizeText(authorName || "");
     if (!cleanAuthor || cleanAuthor.length === 0) {
       cleanAuthor = "ผู้ใช้นิรนาม";
@@ -115,7 +137,7 @@ export async function POST(request: NextRequest) {
       cleanAuthor = "ผู้ใช้นิรนาม";
     }
 
-    // 5. Validate Image Payload
+    // 7. Validate Image Payload
     let validatedImageUrl: string | undefined = undefined;
     if (imageUrl && typeof imageUrl === "string") {
       if (isValidImageBase64(imageUrl)) {

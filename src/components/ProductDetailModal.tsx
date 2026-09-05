@@ -54,6 +54,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [hoverRating, setHoverRating] = useState(0);
   const [authorName, setAuthorName] = useState("");
   const [comment, setComment] = useState("");
+  const [honeypot, setHoneypot] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
@@ -190,6 +191,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           rating,
           comment: comment.trim(),
           imageUrl: imagePreview || undefined,
+          website_confirm: honeypot,
         }),
       });
 
@@ -202,6 +204,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
         // Reset form
         setComment("");
+        setHoneypot("");
         setImagePreview(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
         setFormSuccess("ส่งรีวิวเรียบร้อยแล้ว ขอบคุณที่ร่วมแชร์ผลลัพธ์!");
@@ -551,6 +554,20 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                           {RATING_LABELS[hoverRating || rating]}
                         </span>
                       </div>
+                    </div>
+
+                    {/* Invisible Honeypot Anti-Bot Field */}
+                    <div className="absolute -left-[9999px] opacity-0 pointer-events-none" aria-hidden="true">
+                      <label htmlFor="website_confirm">Website</label>
+                      <input
+                        id="website_confirm"
+                        type="text"
+                        name="website_confirm"
+                        tabIndex={-1}
+                        autoComplete="off"
+                        value={honeypot}
+                        onChange={(e) => setHoneypot(e.target.value)}
+                      />
                     </div>
 
                     {/* Author Display Name Input & Image Attachment */}

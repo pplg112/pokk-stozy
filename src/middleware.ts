@@ -1,40 +1,34 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { ADMIN_COOKIE_NAME, ADMIN_SECRET_TOKEN } from "@/lib/auth";
+import { ADMIN_COOKIE_NAME, verifySessionToken } from "@/lib/auth";
+import { evaluateWafRules } from "@/lib/waf";
 
-const MALICIOUS_BOT_PATTERNS = [
-  /sqlmap/i,
-  /nikto/i,
-  /dirbuster/i,
-  /nmap/i,
-  /acunetix/i,
-  /masscan/i,
-  /wpscan/i,
-  /hydra/i,
-  /metasploit/i,
-  /havij/i,
-  /zgrab/i,
-  /nessus/i,
-];
+export async function middleware(request: NextRequest) {
+  const forwarded = request.headers.get("x-forwarded-for");
+  const clientIp = forwarded
+    ? forwarded.split(",")[0].trim()
+    : request.headers.get("x-real-ip") || "127.0.0.1";
 
-export function middleware(request: NextRequest) {
-  const userAgent = request.headers.get("user-agent") || "";
-
-  // 1. Block known hacking tools and vulnerability scanner bots
-  if (userAgent && MALICIOUS_BOT_PATTERNS.some((pattern) => pattern.test(userAgent))) {
-    return new NextResponse("Forbidden: Automated vulnerability scanning is prohibited.", {
-      status: 403,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
+  // 1. Edge WAF Engine: Honeypot traps, SQLi/LFI/RCE inspection, IP Jail & Malicious Bot blocking
+  const wafResult = evaluateWafRules(request, clientIp);
+  if (wafResult.blocked) {
+    return new NextResponse(wafResult.reason || "Forbidden: Request blocked by security firewall.", {
+      status: wafResult.status || 403,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "X-Firewall-Block": "Active-Defense",
+      },
     });
   }
 
   const { pathname } = request.nextUrl;
 
-  // 2. Protect /admin, excluding /admin/login
+  // 2. Protect /admin routes, excluding /admin/login
   if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
     const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+    const isValid = await verifySessionToken(token, clientIp);
 
-    if (!token || token !== ADMIN_SECRET_TOKEN) {
+    if (!isValid) {
       const loginUrl = new URL("/admin/login", request.url);
       return NextResponse.redirect(loginUrl);
     }

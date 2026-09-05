@@ -1,5 +1,5 @@
 /**
- * Input sanitization & Anti-Spam / Anti-XSS utilities
+ * Advanced Input Sanitization, Anti-Spam, Anti-XSS, and Prototype Pollution Protection
  */
 
 export function sanitizeText(str: string): string {
@@ -11,7 +11,40 @@ export function sanitizeText(str: string): string {
     .replace(/<[^>]+>/g, "") // remove all HTML tags
     .replace(/javascript:/gi, "") // strip pseudo-protocol
     .replace(/on\w+\s*=/gi, "") // strip event handlers like onerror=, onclick=
+    .replace(/[<>'"&]/g, (char) => {
+      // Escape HTML entities
+      switch (char) {
+        case "<": return "&lt;";
+        case ">": return "&gt;";
+        case "'": return "&#39;";
+        case '"': return "&quot;";
+        case "&": return "&amp;";
+        default: return char;
+      }
+    })
     .trim();
+}
+
+/**
+ * Protect against JSON Object Prototype Pollution
+ */
+export function containsPrototypePollution(obj: any): boolean {
+  if (!obj || typeof obj !== "object") return false;
+
+  const dangerousKeys = ["__proto__", "constructor", "prototype"];
+  
+  for (const key of Object.keys(obj)) {
+    if (dangerousKeys.includes(key.toLowerCase())) {
+      return true;
+    }
+    if (typeof obj[key] === "object" && obj[key] !== null) {
+      if (containsPrototypePollution(obj[key])) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 const SPAM_PATTERNS = [
@@ -21,6 +54,11 @@ const SPAM_PATTERNS = [
   /บาคาร่า/i,
   /แทงบอล/i,
   /ufabet/i,
+  /sexybaccarat/i,
+  /gclub/i,
+  /ruay/i,
+  /หวยออนไลน์/i,
+  /ปั่นบาคาร่า/i,
   /คาสิโน/i,
   /ฝาก\s*ถอน/i,
   /แจกเครดิตฟรี/i,
@@ -28,6 +66,9 @@ const SPAM_PATTERNS = [
   /bit\.ly\//i,
   /wa\.me\//i,
   /line\.me\/ti\/p\//i,
+  /cutt\.ly\//i,
+  /tinyurl\.com\//i,
+  /rb\.gy\//i,
 ];
 
 export function isSpamContent(text: string): boolean {

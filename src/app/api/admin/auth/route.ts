@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ADMIN_COOKIE_NAME, ADMIN_SECRET_TOKEN, ADMIN_PASSWORD } from "@/lib/auth";
+import {
+  ADMIN_COOKIE_NAME,
+  ADMIN_PASSWORD,
+  timingSafeCompare,
+  createSessionToken,
+  verifySessionToken,
+} from "@/lib/auth";
 import { getClientIp, checkAdminBruteForce, recordAdminAuthAttempt } from "@/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
@@ -24,18 +30,22 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { password } = body;
 
-    if (password === ADMIN_PASSWORD) {
+    // Cryptographic constant-time password comparison to prevent timing attacks
+    if (typeof password === "string" && timingSafeCompare(password, ADMIN_PASSWORD)) {
       recordAdminAuthAttempt(ip, true);
+
+      // Generate cryptographically signed HMAC-SHA256 session token
+      const sessionToken = await createSessionToken(ip);
 
       const response = NextResponse.json({ 
         success: true, 
         message: "เข้าสู่ระบบสำเร็จ",
-        token: ADMIN_SECRET_TOKEN 
+        token: sessionToken 
       });
       
       response.cookies.set({
         name: ADMIN_COOKIE_NAME,
-        value: ADMIN_SECRET_TOKEN,
+        value: sessionToken,
         httpOnly: true,
         path: "/",
         maxAge: 60 * 60 * 24 * 7, // 7 days
@@ -46,8 +56,15 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
+    // Failed attempt: record and apply exponential backoff delay
     recordAdminAuthAttempt(ip, false);
     const updatedStatus = checkAdminBruteForce(ip);
+
+    // Artificial delay to thwart automated fast brute-forcers
+    const failedCount = 5 - updatedStatus.remainingAttempts;
+    const throttleMs = Math.min(3000, Math.max(500, failedCount * 600));
+    await new Promise((resolve) => setTimeout(resolve, throttleMs));
+
     const remainingMsg = updatedStatus.remainingAttempts > 0
       ? ` (เหลือโอกาสอีก ${updatedStatus.remainingAttempts} ครั้งก่อนถูกล็อค)`
       : " (ระบบล็อคการเข้าถึงชั่วคราว 15 นาที)";
@@ -65,8 +82,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const ip = getClientIp(request);
   const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value || request.headers.get("x-admin-token");
-  if (token === ADMIN_SECRET_TOKEN) {
+  
+  const isValid = await verifySessionToken(token, ip);
+  if (isValid) {
     return NextResponse.json({ authenticated: true });
   }
   return NextResponse.json({ authenticated: false }, { status: 401 });
