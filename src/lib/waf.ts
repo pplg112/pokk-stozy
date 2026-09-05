@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 
-// Dynamic In-Memory Ban Jail for offending IPs (24-hour ban)
+// Dynamic In-Memory Ban Jail for offending IPs
 interface JailRecord {
   bannedUntil: number;
   reason: string;
@@ -19,6 +19,11 @@ setInterval(() => {
 }, 300000); // every 5 minutes
 
 export function isIpBanned(ip: string): { banned: boolean; reason?: string; remainingSeconds?: number } {
+  // Loopback / localhost is never banned
+  if (ip === "127.0.0.1" || ip === "::1" || ip === "localhost") {
+    return { banned: false };
+  }
+
   const record = ipJail.get(ip);
   if (!record) return { banned: false };
 
@@ -32,7 +37,9 @@ export function isIpBanned(ip: string): { banned: boolean; reason?: string; rema
   return { banned: false };
 }
 
-export function jailIp(ip: string, reason: string, durationMs: number = 24 * 60 * 60 * 1000): void {
+export function jailIp(ip: string, reason: string, durationMs: number = 2 * 60 * 60 * 1000): void {
+  if (ip === "127.0.0.1" || ip === "::1" || ip === "localhost") return;
+
   ipJail.set(ip, {
     bannedUntil: Date.now() + durationMs,
     reason,
@@ -139,10 +146,10 @@ export function evaluateWafRules(
   const userAgent = request.headers.get("user-agent") || "";
   const { pathname, search } = request.nextUrl;
 
-  // Check Honeypot Traps -> Instant 24h IP Jail
+  // Check Honeypot Traps -> Instant 2h IP Jail
   for (const trap of HONEYPOT_TRAP_ROUTES) {
     if (trap.test(pathname)) {
-      jailIp(clientIp, `Honeypot trap triggered on ${pathname}`);
+      jailIp(clientIp, `Honeypot trap triggered on ${pathname}`, 7200000); // 2 hours
       return {
         blocked: true,
         reason: "Access Denied: Security Violation",
@@ -167,7 +174,6 @@ export function evaluateWafRules(
   try {
     decodedUrl = decodeURIComponent(rawUrl);
   } catch {
-    // Malformed URI encoding is itself a common fuzzing vector
     return {
       blocked: true,
       reason: "Bad Request: Malformed URI Encoding",
@@ -177,7 +183,7 @@ export function evaluateWafRules(
 
   for (const pattern of ATTACK_PATTERNS) {
     if (pattern.test(decodedUrl) || pattern.test(search)) {
-      jailIp(clientIp, `Attack payload detected in query: ${pattern.toString()}`, 7200000); // 2 hours ban
+      jailIp(clientIp, `Attack payload detected: ${pattern.toString()}`, 7200000); // 2 hours ban
       return {
         blocked: true,
         reason: "Forbidden: Malicious payload pattern detected.",
