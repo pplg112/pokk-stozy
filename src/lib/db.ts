@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { RealProduct, INITIAL_REAL_PRODUCTS } from "@/data/realProducts";
-import { Review } from "@/types";
+import { Review, ReviewReply } from "@/types";
 import { getSupabase } from "./supabase";
 
 const DATA_DIR = path.join(process.cwd(), "data");
@@ -479,6 +479,8 @@ export const db = {
   async createReview(data: {
     productId: string;
     authorName: string;
+    authorAvatar?: string;
+    discordId?: string;
     rating: number;
     comment: string;
     imageUrl?: string;
@@ -487,10 +489,13 @@ export const db = {
       id: `rev-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       productId: data.productId,
       authorName: data.authorName.trim() || "ผู้ใช้นิรนาม",
+      authorAvatar: data.authorAvatar || undefined,
+      discordId: data.discordId || undefined,
       rating: Math.max(1, Math.min(5, Math.round(data.rating))),
       comment: data.comment.trim(),
       imageUrl: data.imageUrl || undefined,
       createdAt: new Date().toISOString(),
+      replies: [],
     };
 
     const supabase = getSupabase();
@@ -543,6 +548,56 @@ export const db = {
     }
 
     return newReview;
+  },
+
+  async addReviewReply(
+    reviewId: string,
+    replyData: {
+      authorName: string;
+      authorAvatar?: string;
+      discordId?: string;
+      content: string;
+    }
+  ): Promise<ReviewReply | null> {
+    const newReply: ReviewReply = {
+      id: `reply-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      reviewId,
+      authorName: replyData.authorName.trim() || "สมาชิก Pokky",
+      authorAvatar: replyData.authorAvatar || undefined,
+      discordId: replyData.discordId || undefined,
+      content: replyData.content.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data: rev } = await supabase
+          .from("reviews")
+          .select("replies")
+          .eq("id", reviewId)
+          .single();
+        if (rev) {
+          const updatedReplies = Array.isArray(rev.replies) ? [...rev.replies, newReply] : [newReply];
+          await supabase
+            .from("reviews")
+            .update({ replies: updatedReplies })
+            .eq("id", reviewId);
+        }
+      } catch (e) {
+        console.error("Supabase addReviewReply error, using local fallback:", e);
+      }
+    }
+
+    const reviews = ensureReviewsFile();
+    const targetRev = reviews.find((r) => r.id === reviewId);
+    if (!targetRev) return null;
+
+    targetRev.replies = targetRev.replies || [];
+    targetRev.replies.push(newReply);
+    persistReviews(reviews);
+
+    return newReply;
   },
 
   async getProductRating(productId: string): Promise<{ rating: number; reviewCount: number }> {

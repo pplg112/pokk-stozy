@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getClientIp, checkReviewRateLimit } from "@/lib/rateLimit";
 import { sanitizeText, isSpamContent, isValidImageBase64, containsPrototypePollution } from "@/lib/sanitize";
 import { jailIp } from "@/lib/waf";
+import { getAuthenticatedUser } from "@/lib/userAuth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -125,8 +126,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. Sanitize Author Name
-    let cleanAuthor = sanitizeText(authorName || "");
+    // 6. Check Logged-in Discord User & Sanitize Author Name
+    const loggedInUser = await getAuthenticatedUser(request);
+    let cleanAuthor = loggedInUser?.globalName || loggedInUser?.username || sanitizeText(authorName || "");
     if (!cleanAuthor || cleanAuthor.length === 0) {
       cleanAuthor = "ผู้ใช้นิรนาม";
     } else if (cleanAuthor.length > 50) {
@@ -136,6 +138,9 @@ export async function POST(request: NextRequest) {
     if (isSpamContent(cleanAuthor)) {
       cleanAuthor = "ผู้ใช้นิรนาม";
     }
+
+    const authorAvatar = loggedInUser?.avatarUrl || body.authorAvatar || undefined;
+    const discordId = loggedInUser?.id || body.discordId || undefined;
 
     // 7. Validate Image Payload
     let validatedImageUrl: string | undefined = undefined;
@@ -153,6 +158,8 @@ export async function POST(request: NextRequest) {
     const newReview = await db.createReview({
       productId,
       authorName: cleanAuthor,
+      authorAvatar,
+      discordId,
       rating: Math.round(parsedRating),
       comment: cleanComment,
       imageUrl: validatedImageUrl,

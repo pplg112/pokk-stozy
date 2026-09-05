@@ -38,14 +38,37 @@ export interface DigitalProduct {
   revertScript?: string;
 }
 
+export interface DiscordUser {
+  id: string; // discord snowflake ID
+  username: string;
+  globalName?: string;
+  avatar?: string;
+  avatarUrl?: string;
+  email?: string;
+  role?: "user" | "admin";
+}
+
+export interface ReviewReply {
+  id: string;
+  reviewId: string;
+  authorName: string;
+  authorAvatar?: string;
+  discordId?: string;
+  content: string;
+  createdAt: string;
+}
+
 export interface Review {
   id: string;
   productId: string;
   authorName: string;
+  authorAvatar?: string;
+  discordId?: string;
   rating: number; // 1 to 5
   comment: string;
   imageUrl?: string;
   createdAt: string;
+  replies?: ReviewReply[];
 }
 
 export interface DownloadRecord {

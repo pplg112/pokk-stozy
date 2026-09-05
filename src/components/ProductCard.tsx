@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { DigitalProduct } from "@/types";
 import { 
   Zap, 
@@ -44,16 +45,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Product Cover Image / Banner (Aspect 16:9 Full View) */}
         {product.imageUrl ? (
           <div className="mb-3.5">
-            <div 
-              onClick={() => onViewDetails(product)}
-              className="relative w-full aspect-video rounded-xl overflow-hidden bg-black/60 border border-white/10 cursor-pointer group/img"
+            <Link
+              href={`/setting/${product.id}`}
+              className="block relative w-full aspect-video rounded-xl overflow-hidden bg-black/60 border border-white/10 cursor-pointer group/img"
             >
               <img 
                 src={product.imageUrl} 
                 alt={product.name}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105" 
               />
-            </div>
+            </Link>
 
             {/* Meta badges placed cleanly below image so nothing is covered */}
             <div className="flex items-center justify-between gap-2 mt-2.5">
@@ -150,13 +151,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-          <button
-            onClick={() => onViewDetails(product)}
+          <Link
+            href={`/setting/${product.id}`}
             className="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold text-slate-200 hover:text-white bg-white/[0.05] hover:bg-white/[0.12] border border-white/15 hover:border-white/30 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
           >
             <Eye className="w-3.5 h-3.5 text-slate-400" />
             ข้อมูลไฟล์
-          </button>
+          </Link>
           <button
             onClick={() => onBuyNow(product)}
             className="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold text-slate-950 bg-gradient-to-r from-green-400 via-emerald-400 to-green-300 hover:from-green-300 hover:to-emerald-200 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-green-500/25 hover:shadow-green-500/45 hover:scale-[1.02] active:scale-95 cursor-pointer font-sans"

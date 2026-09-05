@@ -7,12 +7,13 @@ import { ProductCatalog } from "@/components/ProductCatalog";
 import { ProductDetailModal } from "@/components/ProductDetailModal";
 import { FreeDownloadModal } from "@/components/FreeDownloadModal";
 import { GeminiAiChatModal } from "@/components/GeminiAiChatModal";
+import { DiscordAuthModal } from "@/components/DiscordAuthModal";
 import { FaqSection } from "@/components/FaqSection";
 import { Footer } from "@/components/Footer";
 import { CyberBackground } from "@/components/CyberBackground";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { DIGITAL_PRODUCTS } from "@/data/products";
-import { DigitalProduct, DownloadRecord } from "@/types";
+import { DigitalProduct, DownloadRecord, DiscordUser } from "@/types";
 import { ArrowUp, Sparkles, Bot, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
@@ -26,6 +27,9 @@ export default function HomePage() {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
   const [aiInitialPrompt, setAiInitialPrompt] = useState("");
+  const [currentUser, setCurrentUser] = useState<DiscordUser | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isDiscordConfigured, setIsDiscordConfigured] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -63,8 +67,27 @@ export default function HomePage() {
     }
   };
 
+  const checkUserSession = async () => {
+    try {
+      const res = await fetch("/api/auth/me", { cache: "no-store" });
+      const data = await res.json();
+      if (data.success) {
+        setCurrentUser(data.user || null);
+        setIsDiscordConfigured(Boolean(data.isDiscordConfigured));
+      }
+    } catch {}
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      setCurrentUser(null);
+    } catch {}
+  };
+
   useEffect(() => {
     refreshProducts();
+    checkUserSession();
   }, []);
 
   const handleOpenProduct = (product: DigitalProduct) => {
@@ -153,6 +176,9 @@ export default function HomePage() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onOpenAiChat={() => handleOpenAiChat()}
+          currentUser={currentUser}
+          onOpenAuthModal={() => setIsAuthModalOpen(true)}
+          onLogout={handleLogout}
         />
       </div>
 
@@ -316,6 +342,16 @@ export default function HomePage() {
           <ArrowUp className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
         </button>
       )}
+
+      {/* Discord Auth Modal */}
+      <DiscordAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+        }}
+        isDiscordConfigured={isDiscordConfigured}
+      />
 
     </div>
   );

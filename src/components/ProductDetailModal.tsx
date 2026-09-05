@@ -20,7 +20,8 @@ import {
   ZoomIn,
   BookOpen,
   Share2,
-  Check
+  Check,
+  ExternalLink
 } from "lucide-react";
 
 interface ProductDetailModalProps {
@@ -281,29 +282,39 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   {product.tagline}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const shareUrl = `${window.location.origin}/?product=${product.id}`;
-                  navigator.clipboard.writeText(shareUrl);
-                  setCopiedLink(true);
-                  setTimeout(() => setCopiedLink(false), 2000);
-                }}
-                className="self-start sm:self-auto shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white text-xs font-mono transition-colors cursor-pointer"
-                title="คัดลอกลิงก์สำหรับแชร์"
-              >
-                {copiedLink ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-green-400" />
-                    <span className="text-green-300">คัดลอกแล้ว</span>
-                  </>
-                ) : (
-                  <>
-                    <Share2 className="w-3.5 h-3.5" />
-                    <span>แชร์ลิงก์</span>
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
+                <a
+                  href={`/setting/${product.id}`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-300 text-xs font-semibold transition-colors"
+                  title="เปิดหน้ารายละเอียดเต็มจอ"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">เปิดหน้าเต็มจอ</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const shareUrl = `${window.location.origin}/setting/${product.id}`;
+                    navigator.clipboard.writeText(shareUrl);
+                    setCopiedLink(true);
+                    setTimeout(() => setCopiedLink(false), 2000);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white text-xs font-mono transition-colors cursor-pointer"
+                  title="คัดลอกลิงก์สำหรับแชร์"
+                >
+                  {copiedLink ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-green-400" />
+                      <span className="text-green-300">คัดลอกแล้ว</span>
+                    </>
+                  ) : (
+                    <>
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>แชร์ลิงก์</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Navigation Tabs */}

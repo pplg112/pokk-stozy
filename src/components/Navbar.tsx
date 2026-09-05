@@ -3,15 +3,25 @@
 import React from "react";
 
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { Sparkles, LogOut, User as UserIcon } from "lucide-react";
+import { DiscordUser } from "@/types";
 
 interface NavbarProps {
   onSearchChange?: (query: string) => void;
   searchQuery?: string;
   onOpenAiChat?: () => void;
+  currentUser?: DiscordUser | null;
+  onOpenAuthModal?: () => void;
+  onLogout?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenAiChat }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  onOpenAiChat,
+  currentUser,
+  onOpenAuthModal,
+  onLogout,
+}) => {
+  const [showUserMenu, setShowUserMenu] = React.useState(false);
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#08090d]/95 backdrop-blur-md font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between gap-3 sm:gap-6">
@@ -74,7 +84,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAiChat }) => {
         </nav>
 
         {/* Right Actions */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-xs font-mono text-emerald-300">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -83,14 +93,67 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAiChat }) => {
             <span className="tracking-wide text-[11px] font-semibold">SERVER: ONLINE</span>
           </div>
 
+          {/* Discord User Profile Dropdown or Login Button */}
+          {currentUser ? (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-2 p-1 sm:pr-3 rounded-xl bg-[#5865F2]/15 hover:bg-[#5865F2]/25 border border-[#5865F2]/30 transition-all cursor-pointer"
+              >
+                <img
+                  src={currentUser.avatarUrl || "https://cdn.discordapp.com/embed/avatars/0.png"}
+                  alt={currentUser.username}
+                  className="w-7 h-7 rounded-lg object-cover bg-white/5"
+                />
+                <span className="hidden sm:inline text-xs font-bold text-white max-w-[100px] truncate">
+                  {currentUser.globalName || currentUser.username}
+                </span>
+              </button>
+
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-[#0e121b] border border-[#5865F2]/40 shadow-2xl p-2 z-50 animate-fadeIn">
+                  <div className="px-3 py-2 border-b border-white/10 mb-1">
+                    <span className="text-xs font-bold text-white block truncate">
+                      {currentUser.globalName || currentUser.username}
+                    </span>
+                    <span className="text-[10px] text-[#5865F2] font-mono block">
+                      Discord Member
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      if (onLogout) onLogout();
+                    }}
+                    className="w-full px-3 py-2 rounded-xl text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>ออกจากระบบ</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenAuthModal}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#5865F2]/20 hover:bg-[#5865F2]/35 border border-[#5865F2]/40 hover:border-[#5865F2]/70 transition-all cursor-pointer shadow-sm shadow-[#5865F2]/20 hover:scale-[1.02]"
+              title="เข้าสู่ระบบด้วย Discord"
+            >
+              <img src="/discord-logo.png" alt="Discord" className="w-4 h-4 object-contain" />
+              <span className="hidden sm:inline">เข้าสู่ระบบ</span>
+            </button>
+          )}
+
           <a
             href="https://discord.gg/eHa8MQu7mz"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2.5 px-3.5 sm:px-4.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-[#5865F2]/25 hover:bg-[#5865F2]/40 border border-[#5865F2]/45 hover:border-[#5865F2]/75 transition-all shadow-md shadow-[#5865F2]/20 hover:shadow-[0_0_20px_rgba(88,101,242,0.4)] group hover:scale-[1.02]"
+            className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-[#5865F2]/25 hover:bg-[#5865F2]/40 border border-[#5865F2]/45 hover:border-[#5865F2]/75 transition-all shadow-md shadow-[#5865F2]/20 hover:shadow-[0_0_20px_rgba(88,101,242,0.4)] group hover:scale-[1.02]"
           >
-            <img src="/discord-logo.png" alt="Discord" className="h-5 sm:h-5.5 w-auto object-contain group-hover:scale-110 transition-transform drop-shadow" />
-            <span>Discord ชุมชน</span>
+            <img src="/discord-logo.png" alt="Discord" className="h-4.5 sm:h-5 w-auto object-contain group-hover:scale-110 transition-transform drop-shadow" />
+            <span className="hidden md:inline">Discord ชุมชน</span>
           </a>
         </div>
 
