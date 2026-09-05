@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getClientIp, checkReviewRateLimit } from "@/lib/rateLimit";
+import { sanitizeText, isSpamContent, isValidImageBase64 } from "@/lib/sanitize";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -34,6 +36,22 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // 1. Anti-Spam Rate Limiting (2 reviews / 60 seconds per IP)
+  const ip = getClientIp(request);
+  const rateLimitStatus = checkReviewRateLimit(ip);
+  if (!rateLimitStatus.allowed) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: `คุณส่งรีวิวถี่เกินไป กรุณารอสักครู่ (${rateLimitStatus.retryAfterSeconds || 60} วินาที) ก่อนส่งใหม่อีกครั้ง`,
+      },
+      { 
+        status: 429, 
+        headers: { "Retry-After": (rateLimitStatus.retryAfterSeconds || 60).toString() } 
+      }
+    );
+  }
+
   try {
     const body = await request.json();
     const { productId, authorName, rating, comment, imageUrl } = body;
@@ -61,37 +79,61 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!comment || typeof comment !== "string" || comment.trim().length === 0) {
+    // 2. Sanitize & Validate Comment Content
+    const cleanComment = sanitizeText(comment || "");
+    if (!cleanComment || cleanComment.length === 0) {
       return NextResponse.json(
-        { success: false, error: "Comment is required" },
+        { success: false, error: "กรุณากรอกข้อความรีวิว" },
         { status: 400 }
       );
     }
 
-    if (comment.trim().length > 1000) {
+    if (cleanComment.length > 1000) {
       return NextResponse.json(
-        { success: false, error: "Comment cannot exceed 1000 characters" },
+        { success: false, error: "ข้อความรีวิวต้องไม่เกิน 1,000 ตัวอักษร" },
         { status: 400 }
       );
     }
 
-    if (imageUrl && typeof imageUrl === "string" && imageUrl.length > 3 * 1024 * 1024) {
+    // 3. Spam & Phishing Link Detection
+    if (isSpamContent(cleanComment)) {
       return NextResponse.json(
-        { success: false, error: "Image size exceeds 2.5MB limit" },
+        { success: false, error: "ตรวจพบข้อความหรือลิงก์ที่ไม่ได้รับอนุญาต" },
         { status: 400 }
       );
     }
 
-    const author = (typeof authorName === "string" && authorName.trim())
-      ? authorName.trim()
-      : "ผู้ใช้นิรนาม";
+    // 4. Sanitize Author Name
+    let cleanAuthor = sanitizeText(authorName || "");
+    if (!cleanAuthor || cleanAuthor.length === 0) {
+      cleanAuthor = "ผู้ใช้นิรนาม";
+    } else if (cleanAuthor.length > 50) {
+      cleanAuthor = cleanAuthor.slice(0, 50);
+    }
+
+    if (isSpamContent(cleanAuthor)) {
+      cleanAuthor = "ผู้ใช้นิรนาม";
+    }
+
+    // 5. Validate Image Payload
+    let validatedImageUrl: string | undefined = undefined;
+    if (imageUrl && typeof imageUrl === "string") {
+      if (isValidImageBase64(imageUrl)) {
+        validatedImageUrl = imageUrl;
+      } else {
+        return NextResponse.json(
+          { success: false, error: "รูปแบบไฟล์รูปภาพไม่ถูกต้อง หรือขนาดเกิน 2.5 MB" },
+          { status: 400 }
+        );
+      }
+    }
 
     const newReview = await db.createReview({
       productId,
-      authorName: author,
+      authorName: cleanAuthor,
       rating: Math.round(parsedRating),
-      comment: comment.trim(),
-      imageUrl: (imageUrl && typeof imageUrl === "string") ? imageUrl : undefined,
+      comment: cleanComment,
+      imageUrl: validatedImageUrl,
     });
 
     const updatedStats = await db.getProductRating(productId);

@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getClientIp, checkDownloadRateLimit } from "@/lib/rateLimit";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Rate limiting against automated download flooding (15 req / 60s per IP)
+  const ip = getClientIp(request);
+  const rateLimitStatus = checkDownloadRateLimit(ip);
+  if (!rateLimitStatus.allowed) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: `คุณดาวน์โหลดถี่เกินไป กรุณารอสักครู่ (${rateLimitStatus.retryAfterSeconds || 60} วินาที)`,
+      },
+      { 
+        status: 429, 
+        headers: { "Retry-After": (rateLimitStatus.retryAfterSeconds || 60).toString() } 
+      }
+    );
+  }
+
   try {
     const { id } = await params;
     const product = await db.getProductById(id);
