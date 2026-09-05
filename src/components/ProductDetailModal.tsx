@@ -278,12 +278,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               {product.description}
             </div>
 
-            {/* Real ZIP Archive Files List (Only shown for multi-file ZIP packages) */}
-            {product.fileFormat?.toUpperCase().includes("ZIP") && product.includedFiles && product.includedFiles.length > 0 && (
+            {/* Real Archive Files List */}
+            {(product.fileFormat?.toUpperCase().includes("ZIP") || product.downloadUrl) && product.includedFiles && product.includedFiles.length > 0 && (
               <div className="p-4 sm:p-5 rounded-2xl bg-cyan-950/20 border border-cyan-500/25 space-y-3 font-sans">
                 <h4 className="text-xs sm:text-sm font-mono font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
                   <FileCode2 className="w-4 h-4 text-cyan-400" />
-                  <span>ไฟล์ที่บรรจุภายในแพ็กเกจ ZIP ({product.includedFiles.length} ไฟล์):</span>
+                  <span>ไฟล์และเครื่องมือภายในแพ็กเกจ ({product.includedFiles.length} รายการ):</span>
                 </h4>
                 <div className="space-y-1.5 font-mono text-xs sm:text-sm">
                   {product.includedFiles.map((file, idx) => (

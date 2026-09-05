@@ -341,7 +341,25 @@ export default function AdminDashboardPage() {
             .map((k) => zip.files[k])
             .filter((e) => !e.dir);
 
-          uploadedIncludedFiles = zipEntries.map((e) => {
+          const imageEntries: typeof zipEntries = [];
+          const scriptAndToolEntries: typeof zipEntries = [];
+
+          for (const e of zipEntries) {
+            const lower = e.name.toLowerCase();
+            if (
+              lower.endsWith(".png") ||
+              lower.endsWith(".jpg") ||
+              lower.endsWith(".jpeg") ||
+              lower.endsWith(".webp") ||
+              lower.endsWith(".gif")
+            ) {
+              imageEntries.push(e);
+            } else {
+              scriptAndToolEntries.push(e);
+            }
+          }
+
+          uploadedIncludedFiles = scriptAndToolEntries.map((e) => {
             const lower = e.name.toLowerCase();
             let desc = "ไฟล์ส่วนประกอบในแพ็กเกจ";
             if (lower.endsWith(".reg")) desc = "ไฟล์ Registry ปรับแต่งระบบ Windows";
@@ -349,12 +367,18 @@ export default function AdminDashboardPage() {
             else if (lower.endsWith(".ps1")) desc = "สคริปต์ PowerShell";
             else if (lower.endsWith(".txt")) desc = "คู่มือหรือข้อความอธิบาย";
             else if (lower.endsWith(".exe")) desc = "โปรแกรมเครื่องมือปรับแต่ง (Executable Tool)";
-            else if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg")) desc = "ภาพคู่มือขั้นตอนการตั้งค่า";
             return {
               filename: e.name,
               description: desc,
             };
           });
+
+          if (imageEntries.length > 0) {
+            uploadedIncludedFiles.push({
+              filename: "ภาพประกอบและคู่มือการตั้งค่า",
+              description: `รวมภาพคู่มือขั้นตอนการใช้งาน (จำนวน ${imageEntries.length} ภาพ)`,
+            });
+          }
 
           // Extract text from scripts inside zip for AI analysis
           for (const entry of zipEntries) {
@@ -556,11 +580,21 @@ export default function AdminDashboardPage() {
       const url = isEdit ? `/api/admin/products/${editingProduct.id}` : "/api/admin/products";
       const method = isEdit ? "PUT" : "POST";
 
+      const payload = { ...formData };
+      if (payload.downloadUrl && payload.downloadUrl.trim().startsWith("http")) {
+        if (!payload.scriptContent || payload.scriptContent.trim() === "") {
+          payload.scriptContent = `@echo off\ntitle ${payload.name}\necho [POKKY OPTIMIZE] แพ็กเกจนี้ดาวน์โหลดผ่านลิงก์ตรงภายนอก\npause`;
+        }
+        if (!payload.revertScript || payload.revertScript.trim() === "") {
+          payload.revertScript = `@echo off\ntitle Revert - ${payload.name}\necho คืนค่าเดิมของระบบเรียบร้อย\npause`;
+        }
+      }
+
       const res = await fetch(url, {
         method,
         credentials: "include",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -1211,8 +1245,8 @@ export default function AdminDashboardPage() {
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                     <label className="text-xs font-mono text-slate-300 font-semibold flex items-center gap-2">
-                      <span>Source Code สคริปต์หลัก (.BAT / CMD Code) *</span>
-                      <span className="text-[11px] text-green-400">ไฟล์นี้จะถูกส่งให้ผู้ใช้ดาวน์โหลด</span>
+                      <span>Source Code สคริปต์หลัก (.BAT / CMD Code) {formData.downloadUrl?.trim().startsWith("http") ? "(ไม่บังคับ เมื่อมีลิงก์ตรง)" : "*"}</span>
+                      <span className="text-[11px] text-green-400">{formData.downloadUrl?.trim().startsWith("http") ? "ผู้ใช้จะโหลดไฟล์จากลิงก์ตรงภายนอก" : "ไฟล์นี้จะถูกส่งให้ผู้ใช้ดาวน์โหลด"}</span>
                     </label>
                     <button
                       type="button"
@@ -1235,7 +1269,7 @@ export default function AdminDashboardPage() {
                   </div>
                   <textarea
                     rows={8}
-                    required
+                    required={!formData.downloadUrl || !formData.downloadUrl.trim().startsWith("http")}
                     value={formData.scriptContent}
                     onChange={(e) => setFormData({ ...formData, scriptContent: e.target.value })}
                     className="w-full p-4 rounded-xl bg-black/60 border border-white/10 text-green-400 font-mono text-xs leading-relaxed focus:outline-none focus:border-green-400"
@@ -1246,12 +1280,12 @@ export default function AdminDashboardPage() {
               {/* Code Editor for Revert Script */}
               <div>
                 <label className="block text-xs font-mono text-slate-300 font-semibold mb-2 flex items-center justify-between">
-                  <span>Source Code สคริปต์กู้คืน (REVERT Script Code) *</span>
-                  <span className="text-[11px] text-amber-400">สำหรับให้ผู้ใช้คืนค่าเดิมของระบบ</span>
+                  <span>Source Code สคริปต์กู้คืน (REVERT Script Code) {formData.downloadUrl?.trim().startsWith("http") ? "(ไม่บังคับ เมื่อมีลิงก์ตรง)" : "*"}</span>
+                  <span className="text-[11px] text-amber-400">{formData.downloadUrl?.trim().startsWith("http") ? "ไม่จำเป็นเมื่อเป็นแพ็กเกจลิงก์ภายนอก" : "สำหรับให้ผู้ใช้คืนค่าเดิมของระบบ"}</span>
                 </label>
                 <textarea
                   rows={6}
-                  required
+                  required={!formData.downloadUrl || !formData.downloadUrl.trim().startsWith("http")}
                   value={formData.revertScript}
                   onChange={(e) => setFormData({ ...formData, revertScript: e.target.value })}
                   className="w-full p-4 rounded-xl bg-black/60 border border-white/10 text-amber-400 font-mono text-xs leading-relaxed focus:outline-none focus:border-amber-400"

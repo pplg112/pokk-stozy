@@ -279,21 +279,23 @@ export const FreeDownloadModal: React.FC<FreeDownloadModalProps> = ({
 
               {/* Action Buttons */}
               <div className="space-y-3 pt-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className={`grid gap-3 ${product.downloadUrl ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
                   <button
                     onClick={handleManualTrigger}
                     className="py-3.5 px-4 rounded-xl text-xs sm:text-sm font-mono font-medium text-slate-200 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors flex items-center justify-center gap-2"
                   >
                     <Download className="w-4 h-4" />
-                    ดาวน์โหลดสคริปต์หลักอีกครั้ง
+                    {product.downloadUrl ? "เปิดลิงก์ดาวน์โหลดแพ็กเกจอีกครั้ง" : "ดาวน์โหลดสคริปต์หลักอีกครั้ง"}
                   </button>
-                  <button
-                    onClick={handleDownloadRevert}
-                    className="py-3.5 px-4 rounded-xl text-xs sm:text-sm font-mono font-medium text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                    ดาวน์โหลด Revert (คืนค่าเดิม)
-                  </button>
+                  {!product.downloadUrl && (
+                    <button
+                      onClick={handleDownloadRevert}
+                      className="py-3.5 px-4 rounded-xl text-xs sm:text-sm font-mono font-medium text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      ดาวน์โหลด Revert (คืนค่าเดิม)
+                    </button>
+                  )}
                 </div>
                 <button
                   onClick={handleReset}
