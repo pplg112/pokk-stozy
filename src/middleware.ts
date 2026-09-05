@@ -76,7 +76,9 @@ export async function middleware(request: NextRequest) {
 
   // 3. Edge WAF Engine: Honeypots, SQLi/LFI/RCE inspection, IP Jail & Malicious Bot blocking
   // Verified Admin sessions bypass WAF inspection (Admin Whitelist)
-  if (!isAdmin) {
+  // Also allow /admin/login and /api/admin/auth so admin is never locked out from authenticating
+  const isAuthRoute = pathname === "/admin/login" || pathname === "/api/admin/auth";
+  if (!isAdmin && !isAuthRoute) {
     const wafResult = evaluateWafRules(request, clientIp);
     if (wafResult.blocked) {
       return new NextResponse(wafResult.reason || "Forbidden: Request blocked by security firewall.", {

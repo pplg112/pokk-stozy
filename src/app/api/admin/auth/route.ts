@@ -7,6 +7,7 @@ import {
   verifySessionToken,
 } from "@/lib/auth";
 import { getClientIp, checkAdminBruteForce, recordAdminAuthAttempt } from "@/lib/rateLimit";
+import { unbanIp } from "@/lib/waf";
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
     // Cryptographic constant-time password comparison to prevent timing attacks
     if (typeof password === "string" && timingSafeCompare(password, ADMIN_PASSWORD)) {
       recordAdminAuthAttempt(ip, true);
+      unbanIp(ip);
 
       // Generate cryptographically signed HMAC-SHA256 session token
       const sessionToken = await createSessionToken(ip);

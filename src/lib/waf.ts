@@ -70,6 +70,10 @@ export function jailIp(ip: string, reason: string, durationMs: number = 2 * 60 *
   });
 }
 
+export function unbanIp(ip: string): void {
+  ipJail.delete(ip);
+}
+
 // 1. Known malicious scanners, fuzzers, and hacking tool signatures
 const MALICIOUS_USER_AGENTS = [
   /sqlmap/i,
