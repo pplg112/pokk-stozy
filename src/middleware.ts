@@ -61,7 +61,7 @@ export async function middleware(request: NextRequest) {
     : request.headers.get("x-real-ip") || "127.0.0.1";
 
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+  const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value || request.headers.get("x-admin-token");
   const isAdmin = await verifySessionToken(token, clientIp);
 
   // 3. Edge WAF Engine: Honeypots, SQLi/LFI/RCE inspection, IP Jail & Malicious Bot blocking
