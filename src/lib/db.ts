@@ -1,16 +1,18 @@
 import fs from "fs";
 import path from "path";
 import { RealProduct, INITIAL_REAL_PRODUCTS } from "@/data/realProducts";
-import { Review, ReviewReply } from "@/types";
+import { Review, ReviewReply, AppUser } from "@/types";
 import { getSupabase } from "./supabase";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const DB_FILE = path.join(DATA_DIR, "products.json");
 const REVIEWS_FILE = path.join(DATA_DIR, "reviews.json");
+const USERS_FILE = path.join(DATA_DIR, "users.json");
 
 // In-memory cache for fast lookups & serverless persistence during instance lifetime
 let memoryCache: RealProduct[] | null = null;
 let reviewsCache: Review[] | null = null;
+let usersCache: AppUser[] | null = null;
 const MAX_BLOB_STORAGE = 15;
 const fileStorage = new Map<string, { filename: string; content: string }>();
 
@@ -108,6 +110,54 @@ function persistReviews(reviews: Review[]) {
     fs.writeFileSync(REVIEWS_FILE, JSON.stringify(reviews, null, 2), "utf-8");
   } catch {
     // In serverless instances where FS is read-only, reviewsCache retains state
+  }
+}
+
+function ensureUsersFile(): AppUser[] {
+  if (usersCache !== null) {
+    return usersCache;
+  }
+
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      try {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      } catch {
+        // Read-only filesystem on serverless
+      }
+    }
+
+    if (fs.existsSync(USERS_FILE)) {
+      const raw = fs.readFileSync(USERS_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        usersCache = parsed;
+        return usersCache;
+      }
+    }
+
+    usersCache = [];
+    try {
+      fs.writeFileSync(USERS_FILE, JSON.stringify(usersCache, null, 2), "utf-8");
+    } catch {
+      // Ignore if read-only
+    }
+    return usersCache;
+  } catch {
+    usersCache = [];
+    return usersCache;
+  }
+}
+
+function persistUsers(users: AppUser[]) {
+  usersCache = users;
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf-8");
+  } catch {
+    // In serverless instances where FS is read-only, usersCache retains state
   }
 }
 
@@ -653,5 +703,194 @@ export const db = {
 
   getUploadedBlob(fileId: string) {
     return fileStorage.get(fileId) || null;
+  },
+
+  /**
+   * Upsert a user by discord_id (Unique Key)
+   * If user with this discord_id exists, updates their profile and lastLoginAt.
+   * If not, inserts a new user record.
+   * Works across both Supabase PostgreSQL and Local JSON fallback.
+   */
+  async upsertDiscordUser(userData: {
+    discordId: string;
+    username: string;
+    globalName?: string;
+    email?: string;
+    avatar?: string;
+    avatarUrl?: string;
+    role?: "user" | "admin";
+  }): Promise<AppUser> {
+    const now = new Date().toISOString();
+    const supabase = getSupabase();
+    let internalId = `usr_${userData.discordId}`;
+
+    if (supabase) {
+      try {
+        const { data: existingUsers } = await supabase
+          .from("users")
+          .select("*")
+          .eq("discord_id", userData.discordId)
+          .limit(1);
+
+        if (existingUsers && existingUsers.length > 0) {
+          const existing = existingUsers[0];
+          internalId = existing.id;
+          await supabase
+            .from("users")
+            .update({
+              username: userData.username,
+              global_name: userData.globalName || userData.username,
+              email: userData.email || existing.email,
+              avatar: userData.avatar || existing.avatar,
+              avatar_url: userData.avatarUrl || existing.avatar_url,
+              last_login_at: now,
+            })
+            .eq("id", internalId);
+        } else {
+          await supabase.from("users").insert({
+            id: internalId,
+            discord_id: userData.discordId,
+            username: userData.username,
+            global_name: userData.globalName || userData.username,
+            email: userData.email || null,
+            avatar: userData.avatar || null,
+            avatar_url: userData.avatarUrl || null,
+            role: userData.role || "user",
+            created_at: now,
+            last_login_at: now,
+          });
+        }
+      } catch (e) {
+        console.error("Supabase upsertDiscordUser error, using local fallback:", e);
+      }
+    }
+
+    // Local JSON / memoryCache persistence
+    const users = ensureUsersFile();
+    const existingIndex = users.findIndex((u) => u.discordId === userData.discordId);
+
+    let finalUser: AppUser;
+    if (existingIndex >= 0) {
+      finalUser = {
+        ...users[existingIndex],
+        username: userData.username,
+        globalName: userData.globalName || userData.username,
+        email: userData.email || users[existingIndex].email,
+        avatar: userData.avatar || users[existingIndex].avatar,
+        avatarUrl: userData.avatarUrl || users[existingIndex].avatarUrl,
+        lastLoginAt: now,
+      };
+      users[existingIndex] = finalUser;
+    } else {
+      finalUser = {
+        id: internalId,
+        discordId: userData.discordId,
+        username: userData.username,
+        globalName: userData.globalName || userData.username,
+        email: userData.email,
+        avatar: userData.avatar,
+        avatarUrl: userData.avatarUrl,
+        role: userData.role || "user",
+        createdAt: now,
+        lastLoginAt: now,
+      };
+      users.push(finalUser);
+    }
+
+    persistUsers(users);
+    return finalUser;
+  },
+
+  async getUserByDiscordId(discordId: string): Promise<AppUser | null> {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data } = await supabase
+          .from("users")
+          .select("*")
+          .eq("discord_id", discordId)
+          .limit(1);
+        if (data && data.length > 0) {
+          const row = data[0];
+          return {
+            id: row.id,
+            discordId: row.discord_id,
+            username: row.username,
+            globalName: row.global_name,
+            email: row.email,
+            avatar: row.avatar,
+            avatarUrl: row.avatar_url,
+            role: row.role || "user",
+            createdAt: row.created_at,
+            lastLoginAt: row.last_login_at,
+          };
+        }
+      } catch (e) {
+        console.error("Supabase getUserByDiscordId error:", e);
+      }
+    }
+    const users = ensureUsersFile();
+    return users.find((u) => u.discordId === discordId) || null;
+  },
+
+  async getUserById(id: string): Promise<AppUser | null> {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", id)
+          .limit(1);
+        if (data && data.length > 0) {
+          const row = data[0];
+          return {
+            id: row.id,
+            discordId: row.discord_id,
+            username: row.username,
+            globalName: row.global_name,
+            email: row.email,
+            avatar: row.avatar,
+            avatarUrl: row.avatar_url,
+            role: row.role || "user",
+            createdAt: row.created_at,
+            lastLoginAt: row.last_login_at,
+          };
+        }
+      } catch (e) {
+        console.error("Supabase getUserById error:", e);
+      }
+    }
+    const users = ensureUsersFile();
+    return users.find((u) => u.id === id) || null;
+  },
+
+  async getAllUsers(): Promise<AppUser[]> {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data } = await supabase
+          .from("users")
+          .select("*")
+          .order("last_login_at", { ascending: false });
+        if (data && data.length > 0) {
+          return data.map((row) => ({
+            id: row.id,
+            discordId: row.discord_id,
+            username: row.username,
+            globalName: row.global_name,
+            email: row.email,
+            avatar: row.avatar,
+            avatarUrl: row.avatar_url,
+            role: row.role || "user",
+            createdAt: row.created_at,
+            lastLoginAt: row.last_login_at,
+          }));
+        }
+      } catch (e) {
+        console.error("Supabase getAllUsers error:", e);
+      }
+    }
+    return ensureUsersFile();
   }
 };

@@ -112,6 +112,55 @@ export function getDiscordOAuthUrl(redirectUri: string, state: string = "pokky_a
   return `https://discord.com/api/oauth2/authorize?${params.toString()}`;
 }
 
+/**
+ * Generate a cryptographically signed state token containing returnUrl and timestamp to prevent CSRF
+ */
+export async function generateSignedOAuthState(returnUrl: string = "/"): Promise<string> {
+  const nonce = Math.random().toString(36).substring(2, 10);
+  const ts = Date.now();
+  const payload = JSON.stringify({ returnUrl, nonce, ts });
+  const b64 = Buffer.from(payload, "utf-8").toString("base64url");
+  const sig = await hmacSign(b64, SESSION_SECRET);
+  return `${b64}.${sig}`;
+}
+
+/**
+ * Verify and unpack signed state token. Returns { valid: boolean, returnUrl: string }
+ */
+export async function verifySignedOAuthState(stateString: string | null | undefined): Promise<{ valid: boolean; returnUrl: string }> {
+  if (!stateString || typeof stateString !== "string") {
+    return { valid: false, returnUrl: "/" };
+  }
+  const parts = stateString.split(".");
+  if (parts.length !== 2) {
+    try {
+      const parsed = JSON.parse(Buffer.from(stateString, "base64url").toString("utf-8"));
+      return { valid: true, returnUrl: parsed?.returnUrl || "/" };
+    } catch {
+      return { valid: false, returnUrl: "/" };
+    }
+  }
+
+  const [b64, sig] = parts;
+  const expectedSig = await hmacSign(b64, SESSION_SECRET);
+  if (!timingSafeEqual(sig, expectedSig)) {
+    return { valid: false, returnUrl: "/" };
+  }
+
+  try {
+    const raw = Buffer.from(b64, "base64url").toString("utf-8");
+    const parsed = JSON.parse(raw);
+    // State is valid for up to 15 minutes
+    if (parsed.ts && Date.now() - parsed.ts > 15 * 60 * 1000) {
+      return { valid: false, returnUrl: parsed.returnUrl || "/" };
+    }
+    const returnUrl = typeof parsed.returnUrl === "string" && parsed.returnUrl.startsWith("/") ? parsed.returnUrl : "/";
+    return { valid: true, returnUrl };
+  } catch {
+    return { valid: false, returnUrl: "/" };
+  }
+}
+
 export function getDiscordAvatarUrl(userId: string, avatarHash?: string | null): string {
   if (avatarHash) {
     const isAnimated = avatarHash.startsWith("a_");

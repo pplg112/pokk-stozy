@@ -192,15 +192,23 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-[#0e121b] border border-[#5865F2]/40 shadow-2xl p-2 z-50 animate-fadeIn">
+                <div className="absolute right-0 mt-2 w-52 rounded-2xl bg-[#0e121b] border border-[#5865F2]/40 shadow-2xl p-2 z-50 animate-fadeIn space-y-1">
                   <div className="px-3 py-2 border-b border-white/10 mb-1">
                     <span className="text-xs font-bold text-white block truncate">
                       {effectiveUser.globalName || effectiveUser.username}
                     </span>
                     <span className="text-[10px] text-[#5865F2] font-mono block">
-                      Discord Member
+                      Discord Verified Member
                     </span>
                   </div>
+                  <Link
+                    href="/login"
+                    onClick={() => setShowUserMenu(false)}
+                    className="w-full px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <UserIcon className="w-3.5 h-3.5 text-[#5865F2] shrink-0" />
+                    <span className="whitespace-nowrap">ข้อมูลบัญชี & สถานะ</span>
+                  </Link>
                   <button
                     onClick={handleLogoutClick}
                     className="w-full px-3 py-2 rounded-xl text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors cursor-pointer"

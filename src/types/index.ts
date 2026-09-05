@@ -48,6 +48,19 @@ export interface DiscordUser {
   role?: "user" | "admin";
 }
 
+export interface AppUser {
+  id: string; // internal user ID
+  discordId: string; // unique Discord snowflake ID
+  username: string;
+  globalName?: string;
+  email?: string;
+  avatar?: string;
+  avatarUrl?: string;
+  role: "user" | "admin";
+  createdAt: string;
+  lastLoginAt: string;
+}
+
 export interface ReviewReply {
   id: string;
   reviewId: string;

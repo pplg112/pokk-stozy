@@ -41,15 +41,32 @@ CREATE TABLE IF NOT EXISTS reviews (
   "createdAt" TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. Create High-Performance Indexes
+-- 3. Create 'users' table (Discord OAuth2 User Profiles)
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  discord_id TEXT UNIQUE NOT NULL,
+  username TEXT NOT NULL,
+  global_name TEXT,
+  email TEXT,
+  avatar TEXT,
+  avatar_url TEXT,
+  role TEXT DEFAULT 'user',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  last_login_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 4. Create High-Performance Indexes
 CREATE INDEX IF NOT EXISTS idx_products_category ON products (category);
 CREATE INDEX IF NOT EXISTS idx_products_active ON products (active);
 CREATE INDEX IF NOT EXISTS idx_reviews_product_id ON reviews ("productId");
 CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews ("createdAt" DESC);
+CREATE INDEX IF NOT EXISTS idx_users_discord_id ON users (discord_id);
+CREATE INDEX IF NOT EXISTS idx_users_last_login ON users (last_login_at DESC);
 
--- 4. Enable Row Level Security (RLS) & Policies
+-- 5. Enable Row Level Security (RLS) & Policies
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read of all products
 DROP POLICY IF EXISTS "Allow public read products" ON products;
@@ -70,6 +87,10 @@ CREATE POLICY "Allow anyone insert reviews" ON reviews FOR INSERT WITH CHECK (tr
 -- Allow all access to reviews
 DROP POLICY IF EXISTS "Allow all access to reviews" ON reviews;
 CREATE POLICY "Allow all access to reviews" ON reviews FOR ALL USING (true) WITH CHECK (true);
+
+-- Allow all access to users for service role
+DROP POLICY IF EXISTS "Allow all access to users" ON users;
+CREATE POLICY "Allow all access to users" ON users FOR ALL USING (true) WITH CHECK (true);
 
 -- 5. Seed Initial Real Products
 INSERT INTO products (
