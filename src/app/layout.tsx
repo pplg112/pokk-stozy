@@ -13,12 +13,21 @@ import Script from "next/script";
 import { ADS_CONFIG } from "@/config/ads";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://pokkystozy.xyz"),
   title: "Pokky Optimize | ศูนย์รวมไฟล์และสคริปต์ Optimize PC แจกฟรี 100%",
   description: "ศูนย์รวมไฟล์และสคริปต์ปรับแต่ง Windows & Gaming PC สำหรับผู้เล่นสายแข่งขัน ลด DPC Latency เพิ่ม FPS ดาวน์โหลดฟรี 100% ปลอดภัย พร้อมไฟล์ Revert",
   icons: {
     icon: "/logo.png",
     shortcut: "/logo.png",
     apple: "/logo.png",
+  },
+  openGraph: {
+    title: "Pokky Optimize | ศูนย์รวมไฟล์และสคริปต์ Optimize PC แจกฟรี 100%",
+    description: "ศูนย์รวมไฟล์และสคริปต์ปรับแต่ง Windows & Gaming PC ลด DPC Latency เพิ่ม FPS ดาวน์โหลดฟรี 100%",
+    url: "https://pokkystozy.xyz",
+    siteName: "Pokky Optimize",
+    locale: "th_TH",
+    type: "website",
   },
   other: {
     "google-adsense-account": "ca-pub-1057391684109886",
