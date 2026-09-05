@@ -24,38 +24,36 @@ export default function HomePage() {
   const [showBackToTop, setShowBackToTop] = useState(false);
 
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      setShowBackToTop(window.scrollY > 350);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setShowBackToTop(window.scrollY > 350);
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const refreshProducts = async () => {
-    const startTime = Date.now();
     try {
       const res = await fetch("/api/products", { cache: "no-store" });
       const data = await res.json();
       if (data.success && Array.isArray(data.products) && data.products.length > 0) {
         setProductsList(data.products);
       } else {
-        // API returned empty, use static fallback
         setProductsList(DIGITAL_PRODUCTS);
       }
     } catch {
-      // Network error, use static fallback
       setProductsList(DIGITAL_PRODUCTS);
     } finally {
-      const elapsed = Date.now() - startTime;
-      const minDuration = 650;
-      const delay = Math.max(0, minDuration - elapsed);
-
+      setIsFadingOut(true);
       setTimeout(() => {
-        setIsFadingOut(true);
-        setTimeout(() => {
-          setIsLoading(false);
-        }, 500);
-      }, delay);
+        setIsLoading(false);
+      }, 300);
     }
   };
 
