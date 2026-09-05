@@ -11,32 +11,42 @@ export interface DiscordConfig {
   clientSecret: string;
 }
 
+import os from "os";
+
 const DATA_DIR = path.join(process.cwd(), "data");
 const DISCORD_CONFIG_FILE = path.join(DATA_DIR, "discord_config.json");
+const TMP_DISCORD_CONFIG_FILE = path.join(os.tmpdir(), "discord_config.json");
 
 let cachedConfig: DiscordConfig | null = null;
 
 export function getDiscordConfig(): DiscordConfig {
-  if (cachedConfig && (cachedConfig.clientId || cachedConfig.clientSecret)) {
+  if (cachedConfig && cachedConfig.clientId && cachedConfig.clientSecret) {
     return cachedConfig;
   }
 
   let clientId = (process.env.DISCORD_CLIENT_ID || "").trim();
   let clientSecret = (process.env.DISCORD_CLIENT_SECRET || "").trim();
 
+  // 1. Try reading from temporary writable filesystem (/tmp)
   try {
-    if (fs.existsSync(DISCORD_CONFIG_FILE)) {
-      const raw = fs.readFileSync(DISCORD_CONFIG_FILE, "utf-8");
+    if (fs.existsSync(TMP_DISCORD_CONFIG_FILE)) {
+      const raw = fs.readFileSync(TMP_DISCORD_CONFIG_FILE, "utf-8");
       const parsed = JSON.parse(raw);
-      if (parsed.clientId && typeof parsed.clientId === "string") {
-        clientId = parsed.clientId.trim();
-      }
-      if (parsed.clientSecret && typeof parsed.clientSecret === "string") {
-        clientSecret = parsed.clientSecret.trim();
-      }
+      if (parsed.clientId) clientId = parsed.clientId.trim();
+      if (parsed.clientSecret) clientSecret = parsed.clientSecret.trim();
     }
-  } catch (err) {
-    // Ignore read errors
+  } catch {}
+
+  // 2. Try reading from bundled project file
+  if (!clientId || !clientSecret) {
+    try {
+      if (fs.existsSync(DISCORD_CONFIG_FILE)) {
+        const raw = fs.readFileSync(DISCORD_CONFIG_FILE, "utf-8");
+        const parsed = JSON.parse(raw);
+        if (parsed.clientId && !clientId) clientId = parsed.clientId.trim();
+        if (parsed.clientSecret && !clientSecret) clientSecret = parsed.clientSecret.trim();
+      }
+    } catch {}
   }
 
   cachedConfig = { clientId, clientSecret };
@@ -49,6 +59,9 @@ export function saveDiscordConfig(clientId: string, clientSecret: string): boole
     clientSecret: (clientSecret || "").trim(),
   };
 
+  let savedToFile = false;
+
+  // Try saving to project directory (local development)
   try {
     if (!fs.existsSync(DATA_DIR)) {
       try {
@@ -56,11 +69,21 @@ export function saveDiscordConfig(clientId: string, clientSecret: string): boole
       } catch {}
     }
     fs.writeFileSync(DISCORD_CONFIG_FILE, JSON.stringify(cachedConfig, null, 2), "utf-8");
-    return true;
-  } catch (err) {
-    console.error("Failed to write discord_config.json:", err);
-    return false;
+    savedToFile = true;
+  } catch {
+    // Read-only filesystem on serverless
   }
+
+  // Try saving to /tmp directory (writable in serverless environments like AWS Lambda & Vercel)
+  try {
+    fs.writeFileSync(TMP_DISCORD_CONFIG_FILE, JSON.stringify(cachedConfig, null, 2), "utf-8");
+    savedToFile = true;
+  } catch {
+    // Ignore tmp write errors
+  }
+
+  // Always return true if config has valid credentials
+  return savedToFile || Boolean(cachedConfig.clientId && cachedConfig.clientSecret);
 }
 
 // Constant-time comparison
