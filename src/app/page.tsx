@@ -15,7 +15,7 @@ import { DigitalProduct, DownloadRecord } from "@/types";
 import { ArrowUp } from "lucide-react";
 
 export default function HomePage() {
-  const [productsList, setProductsList] = useState<DigitalProduct[]>(DIGITAL_PRODUCTS);
+  const [productsList, setProductsList] = useState<DigitalProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<DigitalProduct | null>(null);
   const [downloadingProduct, setDownloadingProduct] = useState<DigitalProduct | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -38,9 +38,13 @@ export default function HomePage() {
       const data = await res.json();
       if (data.success && Array.isArray(data.products) && data.products.length > 0) {
         setProductsList(data.products);
+      } else {
+        // API returned empty, use static fallback
+        setProductsList(DIGITAL_PRODUCTS);
       }
     } catch {
-      // Retain existing products on network error
+      // Network error, use static fallback
+      setProductsList(DIGITAL_PRODUCTS);
     } finally {
       const elapsed = Date.now() - startTime;
       const minDuration = 650;
