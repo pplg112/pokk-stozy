@@ -31,14 +31,20 @@ export async function GET(
       .replace(/_+/g, "_")
       .replace(/^_|_$/g, "") || "pokky_package";
 
+    const asciiFallback = safeFilename
+      .replace(/[\u0E00-\u0E7F]/g, "")
+      .replace(/_+/g, "_")
+      .replace(/^_|_$/g, "") || "pokky_package";
+
     if (isRevert) {
       const filename = `REVERT_${safeFilename}.bat`;
+      const fallbackName = `REVERT_${asciiFallback}.bat`;
       const content = product.revertScript || `@echo off\ntitle Revert - ${product.name}\necho คืนค่าเดิมของระบบเรียบร้อย\npause`;
       return new NextResponse(content, {
         status: 200,
         headers: {
           "Content-Type": "application/x-bat; charset=utf-8",
-          "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"`,
+          "Content-Disposition": `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
           "Cache-Control": "no-cache, no-store, must-revalidate",
         },
       });
@@ -64,12 +70,13 @@ export async function GET(
       }
 
       const filename = `${safeFilename}.zip`;
+      const fallbackName = `${asciiFallback}.zip`;
 
       return new NextResponse(new Uint8Array(zipBuffer), {
         status: 200,
         headers: {
           "Content-Type": "application/zip",
-          "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"`,
+          "Content-Disposition": `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
           "Content-Length": zipBuffer.length.toString(),
           "Cache-Control": "no-cache, no-store, must-revalidate",
         },
@@ -80,12 +87,13 @@ export async function GET(
     const rawExt = (product.fileFormat || ".BAT").toUpperCase().replace(".", "");
     const ext = ["BAT", "CMD", "REG", "PS1"].includes(rawExt) ? rawExt.toLowerCase() : "bat";
     const filename = `${safeFilename}.${ext}`;
+    const fallbackName = `${asciiFallback}.${ext}`;
 
     return new NextResponse(content, {
       status: 200,
       headers: {
         "Content-Type": `application/x-${ext}; charset=utf-8`,
-        "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"`,
+        "Content-Disposition": `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
         "Cache-Control": "no-cache, no-store, must-revalidate",
       },
     });

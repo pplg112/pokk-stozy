@@ -27,7 +27,7 @@ export const FaqSection: React.FC = () => {
       </div>
 
       <div className="space-y-3">
-        {STORE_FAQS.slice(0, 4).map((faq, idx) => {
+        {STORE_FAQS.map((faq, idx) => {
           const isOpen = openIndex === idx;
 
           return (

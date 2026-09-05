@@ -107,8 +107,8 @@ function fallbackAnalyzeCode(filename: string, content: string): AnalysisResult 
   // Generate Revert Script heuristic
   let revertCommands = [
     "@echo off",
-    "title Pokky Optimize - Revert Script",
-    "echo [POKKY OPTIMIZE] กำลังคืนค่าระบบ Windows กลับสู่ค่าเริ่มต้น...",
+    "title Pokky Stozy - Revert Script",
+    "echo [POKKY STOZY] กำลังคืนค่าระบบ Windows กลับสู่ค่าเริ่มต้น...",
     "echo.",
   ];
 
@@ -120,7 +120,7 @@ function fallbackAnalyzeCode(filename: string, content: string): AnalysisResult 
     revertCommands.push("bcdedit /deletevalue useplatformclock >nul 2>&1");
     revertCommands.push("bcdedit /deletevalue disabledynamictick >nul 2>&1");
   }
-  revertCommands.push("echo [POKKY OPTIMIZE] คืนค่าเริ่มต้นเรียบร้อยแล้ว กรุณารีสตาร์ทเครื่อง");
+  revertCommands.push("echo [POKKY STOZY] คืนค่าเริ่มต้นเรียบร้อยแล้ว กรุณารีสตาร์ทเครื่อง");
   revertCommands.push("pause");
 
   return {
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Call Google Gemini API (gemini-1.5-flash standard first, then gemini-2.0-flash)
-    const prompt = `You are an elite Windows OS Esports Optimization Specialist and software packager for "Pokky Optimize Shop".
+    const prompt = `You are an elite Windows OS Esports Optimization Specialist and software packager for "Pokky Stozy".
 Analyze the following script code (filename: "${reqFilename}"):
 
 === SCRIPT CODE START ===

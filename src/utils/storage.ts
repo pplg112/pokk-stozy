@@ -96,7 +96,7 @@ export function triggerFreeDownload(product: DigitalProduct, downloadId?: string
   // Generate clean, safe .bat / .cmd / config script contents
   const scriptContent = `@echo off
 :: ========================================================================
-:: POKKY OPTIMIZE - OFFICIAL FREE COMMUNITY RELEASE
+:: POKKY STOZY - OFFICIAL FREE COMMUNITY RELEASE
 :: Package     : ${product.name}
 :: Version     : ${product.version}
 :: Tagline     : ${product.tagline}
@@ -111,10 +111,10 @@ export function triggerFreeDownload(product: DigitalProduct, downloadId?: string
 :: 3. A Revert script is included at the bottom of this file.
 :: ========================================================================
 
-title Pokky Optimize - ${product.name} [v${product.version}]
+title Pokky Stozy - ${product.name} [v${product.version}]
 color 0b
 echo =======================================================================
-echo          POKKY OPTIMIZE - WINDOWS & GAMING OPTIMIZER
+echo           POKKY STOZY - WINDOWS & GAMING OPTIMIZER
 echo                   (100% FREE COMMUNITY EDITION)
 echo =======================================================================
 echo.
@@ -133,8 +133,8 @@ if %errorLevel% neq 0 (
 
 echo [*] Administrative privileges verified.
 echo [*] Step 1: Creating automated System Restore Point for safety...
-wmic.exe /Namespace:\\\\root\\default Path SystemRestore Call CreateRestorePoint "PokkyOpt_PreTweak_Backup", 100, 7 >nul 2>&1
-echo [OK] Restore Point created: PokkyOpt_PreTweak_Backup
+wmic.exe /Namespace:\\\\root\\default Path SystemRestore Call CreateRestorePoint "PokkyStozy_PreTweak_Backup", 100, 7 >nul 2>&1
+echo [OK] Restore Point created: PokkyStozy_PreTweak_Backup
 echo.
 
 echo [*] Step 2: Applying ${product.name} tweaks...
@@ -179,7 +179,7 @@ exit /b 0
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  const safeFilename = `${product.name.replace(/[^a-zA-Z0-9_-]/g, "_")}_v${product.version.replace(/[^a-zA-Z0-9]/g, "")}_PokkyOpt.bat`;
+  const safeFilename = `${product.name.replace(/[^a-zA-Z0-9_-]/g, "_")}_v${product.version.replace(/[^a-zA-Z0-9]/g, "")}_PokkyStozy.bat`;
   link.download = safeFilename;
   document.body.appendChild(link);
   link.click();
@@ -190,9 +190,20 @@ exit /b 0
 }
 
 export function triggerDownload(record: DownloadRecord | PurchaseRecord): void {
-  // Fallback download if user clicks from history modal
+  // If productId exists, download the actual package from API directly
+  if (record.productId) {
+    const link = document.createElement("a");
+    link.href = `/api/download/${record.productId}`;
+    link.setAttribute("download", "");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    return;
+  }
+
+  // Fallback info text file if no productId is available
   const content = `========================================================================
-POKKY OPTIMIZE - OFFICIAL FREE DOWNLOAD ARCHIVE
+POKKY STOZY - OFFICIAL FREE DOWNLOAD ARCHIVE
 DOWNLOAD ID  : ${record.downloadId || (record as PurchaseRecord).orderId || "DL-ARCHIVE"}
 PACKAGE      : ${record.productName} (${record.version})
 FORMAT       : ${record.fileFormat} (${record.fileSize})
@@ -220,7 +231,7 @@ Join our Discord: https://discord.gg/eHa8MQu7mz
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${record.productName.replace(/[^a-zA-Z0-9_-]/g, "_")}_PokkyOpt.txt`;
+  link.download = `${record.productName.replace(/[^a-zA-Z0-9_-]/g, "_")}_PokkyStozy.txt`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

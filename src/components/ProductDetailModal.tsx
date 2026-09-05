@@ -278,7 +278,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  navigator.clipboard.writeText(window.location.href);
+                  const shareUrl = `${window.location.origin}/?product=${product.id}`;
+                  navigator.clipboard.writeText(shareUrl);
                   setCopiedLink(true);
                   setTimeout(() => setCopiedLink(false), 2000);
                 }}

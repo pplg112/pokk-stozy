@@ -111,8 +111,8 @@ export default function AdminDashboardPage() {
     imageUrl: "",
     downloadUrl: "",
     includedFiles: [] as { filename: string; description: string }[],
-    scriptContent: `@echo off\ntitle Optimization Script\necho [POKKY OPTIMIZE] กำลังเริ่มการปรับแต่ง...\npause`,
-    revertScript: `@echo off\ntitle Revert Script\necho [POKKY OPTIMIZE] คืนค่าเดิมของระบบ...\npause`,
+    scriptContent: `@echo off\ntitle Optimization Script\necho [POKKY STOZY] กำลังเริ่มการปรับแต่ง...\npause`,
+    revertScript: `@echo off\ntitle Revert Script\necho [POKKY STOZY] คืนค่าเดิมของระบบ...\npause`,
   });
 
   const getAuthHeaders = (): Record<string, string> => {
@@ -232,8 +232,8 @@ export default function AdminDashboardPage() {
       imageUrl: CATEGORY_COVER_PRESETS["bundles"],
       downloadUrl: "",
       includedFiles: [],
-      scriptContent: `@echo off\ntitle My Optimization Script\necho [POKKY OPTIMIZE] กำลังเริ่มการปรับแต่ง...\npause`,
-      revertScript: `@echo off\ntitle Revert Script\necho [POKKY OPTIMIZE] คืนค่าเดิมของระบบ...\npause`,
+      scriptContent: `@echo off\ntitle My Optimization Script\necho [POKKY STOZY] กำลังเริ่มการปรับแต่ง...\npause`,
+      revertScript: `@echo off\ntitle Revert Script\necho [POKKY STOZY] คืนค่าเดิมของระบบ...\npause`,
     });
     setIsModalOpen(true);
   };
@@ -402,7 +402,7 @@ export default function AdminDashboardPage() {
           }
 
           if (isLargeFile) {
-            scriptContent = `@echo off\ntitle ${filename}\necho [POKKY OPTIMIZE] แพ็กเกจไฟล์ ZIP ขนาดใหญ่ (${formattedSize})\necho กรุณาดาวน์โหลดผ่านลิงก์ตรงภายนอกที่ระบุไว้\npause`;
+            scriptContent = `@echo off\ntitle ${filename}\necho [POKKY STOZY] แพ็กเกจไฟล์ ZIP ขนาดใหญ่ (${formattedSize})\necho กรุณาดาวน์โหลดผ่านลิงก์ตรงภายนอกที่ระบุไว้\npause`;
             showAlert(
               `ไฟล์ ZIP มีขนาด ${formattedSize} (มากกว่า 4 MB) เพื่อความเร็วสูงสุดและไม่ติดข้อจำกัดของระบบ กรุณาใส่ "ลิงก์ดาวน์โหลดตรง (Google Drive / Mediafire / Mega)" ในช่องข้อมูลด้านล่าง`,
               "แพ็กเกจขนาดใหญ่"
@@ -583,7 +583,7 @@ export default function AdminDashboardPage() {
       const payload = { ...formData };
       if (payload.downloadUrl && payload.downloadUrl.trim().startsWith("http")) {
         if (!payload.scriptContent || payload.scriptContent.trim() === "") {
-          payload.scriptContent = `@echo off\ntitle ${payload.name}\necho [POKKY OPTIMIZE] แพ็กเกจนี้ดาวน์โหลดผ่านลิงก์ตรงภายนอก\npause`;
+          payload.scriptContent = `@echo off\ntitle ${payload.name}\necho [POKKY STOZY] แพ็กเกจนี้ดาวน์โหลดผ่านลิงก์ตรงภายนอก\npause`;
         }
         if (!payload.revertScript || payload.revertScript.trim() === "") {
           payload.revertScript = `@echo off\ntitle Revert - ${payload.name}\necho คืนค่าเดิมของระบบเรียบร้อย\npause`;

@@ -220,7 +220,7 @@ export const db = {
     
     let scriptContentToStore = data.scriptContent?.startsWith("data:")
       ? data.scriptContent
-      : sanitizeCode(data.scriptContent || `@echo off\ntitle ${data.name}\necho [POKKY OPTIMIZE] กำลังดำเนินการปรับแต่ง...\npause`);
+      : sanitizeCode(data.scriptContent || `@echo off\ntitle ${data.name}\necho [POKKY STOZY] กำลังดำเนินการปรับแต่ง...\npause`);
 
     if (data.downloadUrl && data.downloadUrl.trim().startsWith("http")) {
       const cleanUrl = data.downloadUrl.trim();

@@ -63,6 +63,39 @@ export default function HomePage() {
     refreshProducts();
   }, []);
 
+  const handleOpenProduct = (product: DigitalProduct) => {
+    setSelectedProduct(product);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("product", product.id);
+      window.history.replaceState(null, "", url.toString());
+    }
+  };
+
+  const handleCloseProduct = () => {
+    setSelectedProduct(null);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("product");
+      const newUrl = url.pathname + (url.search ? url.search : "");
+      window.history.replaceState(null, "", newUrl);
+    }
+  };
+
+  // Auto-open product modal if ?product=ID is present in URL
+  useEffect(() => {
+    if (productsList.length > 0 && typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const prodId = params.get("product");
+      if (prodId && !selectedProduct) {
+        const found = productsList.find((p) => p.id === prodId);
+        if (found) {
+          setSelectedProduct(found);
+        }
+      }
+    }
+  }, [productsList, selectedProduct]);
+
   const handleStartDownload = (product: DigitalProduct) => {
     setDownloadingProduct(product);
   };
@@ -122,7 +155,7 @@ export default function HomePage() {
         <ProductCatalog
           products={productsList}
           onBuyNow={handleStartDownload}
-          onViewDetails={setSelectedProduct}
+          onViewDetails={handleOpenProduct}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
         />
@@ -139,7 +172,7 @@ export default function HomePage() {
       {/* Product Detail Modal */}
       <ProductDetailModal
         product={selectedProduct}
-        onClose={() => setSelectedProduct(null)}
+        onClose={handleCloseProduct}
         onBuyNow={handleStartDownload}
         onReviewAdded={handleReviewAdded}
       />
