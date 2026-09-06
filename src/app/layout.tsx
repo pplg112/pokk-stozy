@@ -69,6 +69,8 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+import { AdSenseScript } from "@/components/AdSenseScript";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -92,13 +94,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-[#08090d] text-slate-100 antialiased selection:bg-green-500 selection:text-slate-950 font-sans font-normal">
-        {ADS_CONFIG.adsense.enabled && ADS_CONFIG.adsense.clientId && (
-          <Script
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADS_CONFIG.adsense.clientId}`}
-            strategy="afterInteractive"
-            crossOrigin="anonymous"
-          />
-        )}
+        <AdSenseScript />
         {children}
       </body>
     </html>

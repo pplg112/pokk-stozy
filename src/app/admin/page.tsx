@@ -493,7 +493,7 @@ export default function AdminDashboardPage() {
     });
   };
 
-  const readFileAsText = (file: File): Promise<string> => {
+  const readFileAsText = (file: File | Blob): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -538,7 +538,9 @@ export default function AdminDashboardPage() {
       let scriptContent = "";
       let analysisContent = "";
       let uploadedIncludedFiles: { filename: string; description: string }[] = [];
-      const isLargeFile = sizeInBytes > 4 * 1024 * 1024;
+      // Max 1 MB for inline DB storage to guarantee no 413 Payload Too Large and zero browser lag
+      const MAX_INLINE_PAYLOAD_BYTES = 1 * 1024 * 1024;
+      const isLargeFile = sizeInBytes > MAX_INLINE_PAYLOAD_BYTES;
 
       if (extension === "ZIP") {
         try {
@@ -608,13 +610,13 @@ export default function AdminDashboardPage() {
           }
 
           if (isLargeFile) {
-            scriptContent = `@echo off\ntitle ${filename}\necho [POKKY STOZY] แพ็กเกจไฟล์ ZIP ขนาดใหญ่ (${formattedSize})\necho กรุณาดาวน์โหลดผ่านลิงก์ตรงภายนอกที่ระบุไว้\npause`;
+            scriptContent = `@echo off\ntitle ${filename}\necho [POKKY STOZY] แพ็กเกจไฟล์ ZIP ${filename} (${formattedSize})\necho กรุณาดาวน์โหลดผ่านลิงก์ตรงภายนอกความเร็วสูงที่ระบุไว้ในหน้าร้าน\npause`;
             showAlert(
-              `ไฟล์ ZIP มีขนาด ${formattedSize} (มากกว่า 4 MB) เพื่อความเร็วสูงสุดและไม่ติดข้อจำกัดของระบบ กรุณาใส่ "ลิงก์ดาวน์โหลดตรง (Google Drive / Mediafire / Mega)" ในช่องข้อมูลด้านล่าง`,
-              "แพ็กเกจขนาดใหญ่"
+              `ตรวจพบไฟล์ ZIP ขนาด ${formattedSize} (เกิน 1 MB) \n\nระบบและ Gemini AI ได้วิเคราะห์โครงสร้างไฟล์เรียบร้อยแล้ว เพื่อความเสถียรสูงสุดและป้องกันไม่ให้ติดขีดจำกัดขนาดของระบบ กรุณาใส่ "ลิงก์ดาวน์โหลดตรง (Google Drive / Mediafire / Mega)" ในช่องข้อมูลด้านล่าง`,
+              "แพ็กเกจขนาดใหญ่ (แนะนำใช้ลิงก์ตรง)"
             );
           } else {
-            // Read binary ZIP directly as Base64 Data URL
+            // Read binary ZIP directly as Base64 Data URL only if <= 1 MB
             scriptContent = await readFileAsDataURL(file);
           }
         } catch (zipErr) {
@@ -623,18 +625,38 @@ export default function AdminDashboardPage() {
           return;
         }
       } else {
-        // Text script file (.bat, .cmd, .reg, .ps1, .txt)
-        try {
-          scriptContent = await readFileAsText(file);
-          analysisContent = scriptContent.slice(0, 5000);
+        // Text script file (.bat, .cmd, .reg, .ps1, .txt) or other binary format
+        const isTextScript = ["BAT", "CMD", "REG", "PS1", "TXT"].includes(extension);
+        if (isTextScript && !isLargeFile) {
+          try {
+            scriptContent = await readFileAsText(file);
+            analysisContent = scriptContent.slice(0, 5000);
+            uploadedIncludedFiles = [
+              { filename: filename, description: "ไฟล์สคริปต์คำสั่งหลัก" },
+              { filename: `REVERT_${filename.replace(/\.[^/.]+$/, "")}.bat`, description: "สคริปต์กู้คืนค่าเดิมของระบบ" }
+            ];
+          } catch (readErr) {
+            console.error("File reading error:", readErr);
+            showAlert("ไม่สามารถอ่านข้อความจากไฟล์ได้", "อ่านไฟล์ไม่สำเร็จ");
+            return;
+          }
+        } else {
+          // Large script or binary file (.exe, .msi, .iso, .rar, .7z)
+          try {
+            const slice = file.slice(0, 10240);
+            analysisContent = await readFileAsText(slice);
+          } catch {
+            analysisContent = `แพ็กเกจไฟล์: ${filename} (ขนาด: ${formattedSize})`;
+          }
+          scriptContent = `@echo off\ntitle ${filename}\necho [POKKY STOZY] แพ็กเกจ ${filename} (${formattedSize})\necho กรุณาดาวน์โหลดผ่านลิงก์ตรงภายนอกความเร็วสูงที่ระบุไว้ในหน้าร้าน\npause`;
           uploadedIncludedFiles = [
-            { filename: filename, description: "ไฟล์สคริปต์คำสั่งหลัก" },
+            { filename: filename, description: `ไฟล์แพ็กเกจ (${formattedSize})` },
             { filename: `REVERT_${filename.replace(/\.[^/.]+$/, "")}.bat`, description: "สคริปต์กู้คืนค่าเดิมของระบบ" }
           ];
-        } catch (readErr) {
-          console.error("File reading error:", readErr);
-          showAlert("ไม่สามารถอ่านข้อความจากไฟล์ได้", "อ่านไฟล์ไม่สำเร็จ");
-          return;
+          showAlert(
+            `ไฟล์ "${filename}" มีขนาด ${formattedSize} ${!isTextScript ? `(ไฟล์ .${extension})` : "(มากกว่า 1 MB)"}\n\nระบบและ Gemini AI ได้วิเคราะห์โครงสร้างไฟล์เรียบร้อยแล้ว เพื่อความเร็วสูงสุดและไม่กินทรัพยากรเครื่อง กรุณาใส่ "ลิงก์ดาวน์โหลดตรง (Google Drive / Mediafire / Mega)" ในช่องข้อมูลด้านล่าง`,
+            "แพ็กเกจขนาดใหญ่ (แนะนำใช้ลิงก์ตรง)"
+          );
         }
       }
 
@@ -800,14 +822,48 @@ export default function AdminDashboardPage() {
         }
       }
 
+      // Check request body size before sending to prevent Vercel 4.5MB Payload Too Large
+      const bodyJson = JSON.stringify(payload);
+      const payloadMb = bodyJson.length / (1024 * 1024);
+
+      if (payloadMb > 3.8) {
+        showAlert(
+          `ข้อมูลแพ็กเกจนี้มีขนาดใหญ่เกินไป (${payloadMb.toFixed(1)} MB / ขีดจำกัด 4.5 MB) ทำให้ไม่สามารถบันทึกตรงเข้าคลาวด์ได้\n\nวิธีแก้ไข: กรุณาใส่ "ลิงก์ดาวน์โหลดตรง (Google Drive / Mediafire / Mega / GitHub)" ในช่อง 'ลิงก์ดาวน์โหลดตรงภายนอก' แทนการแนบไฟล์ในตัวเว็บ`,
+          "ขนาดข้อมูลเกินขีดจำกัด (Payload Too Large)"
+        );
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch(url, {
         method,
         credentials: "include",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify(payload),
+        body: bodyJson,
       });
 
-      const data = await res.json();
+      if (res.status === 413) {
+        showAlert(
+          "ขนาดไฟล์หรือข้อมูลแพ็กเกจใหญ่เกินขีดจำกัดของเซิร์ฟเวอร์ (HTTP 413 Content Too Large)\n\nกรุณาใส่ 'ลิงก์ดาวน์โหลดตรงภายนอก' (Google Drive / Mediafire / Mega) ในช่องด้านล่างแทนการแนบไฟล์โดยตรง",
+          "ไฟล์มีขนาดใหญ่เกินไป"
+        );
+        setLoading(false);
+        return;
+      }
+
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        console.error("Failed to parse JSON response:", parseErr);
+        showAlert(
+          `เซิร์ฟเวอร์ส่งกลับข้อผิดพลาด (HTTP Status: ${res.status}) กรุณาลองใหม่อีกครั้ง`,
+          "เกิดข้อผิดพลาดในการบันทึก"
+        );
+        setLoading(false);
+        return;
+      }
+
       if (data.success) {
         setIsModalOpen(false);
         setMessage(isEdit ? "บันทึกการแก้ไขแพ็กเกจเรียบร้อยแล้ว" : "สร้างแพ็กเกจสคริปต์ใหม่สำเร็จแล้ว");
@@ -816,8 +872,9 @@ export default function AdminDashboardPage() {
       } else {
         showAlert(data.error || "ไม่สามารถบันทึกได้", "บันทึกไม่สำเร็จ");
       }
-    } catch {
-      showAlert("เกิดข้อผิดพลาดในการบันทึก", "ระบบขัดข้อง");
+    } catch (err) {
+      console.error("handleSaveProduct unexpected error:", err);
+      showAlert("เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง", "ระบบขัดข้อง");
     } finally {
       setLoading(false);
     }

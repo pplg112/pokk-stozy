@@ -2,12 +2,12 @@ import type { NextConfig } from "next";
 
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' https://vercel.live https://pagead2.googlesyndication.com https://adservice.google.com https://tpc.googlesyndication.com https://googleads.g.doubleclick.net https://www.googletagservices.com https://www.google.com;
+  script-src 'self' 'unsafe-inline' https://vercel.live https://pagead2.googlesyndication.com https://adservice.google.com https://tpc.googlesyndication.com https://googleads.g.doubleclick.net https://www.googletagservices.com https://*.google.com https://*.google https://*.googlesyndication.com https://*.doubleclick.net;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  img-src 'self' data: blob: https:;
+  img-src 'self' data: blob: https: https://*.google.com https://*.google https://*.googlesyndication.com https://*.doubleclick.net;
   font-src 'self' data: https://fonts.gstatic.com;
-  connect-src 'self' https://generativelanguage.googleapis.com https://vitals.vercel-insights.com https://*.supabase.co https://cdn.discordapp.com https://discord.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.google.com;
-  frame-src 'self' https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.googlesyndication.com https://*.google.com https://*.doubleclick.net;
+  connect-src 'self' https://generativelanguage.googleapis.com https://vitals.vercel-insights.com https://*.supabase.co https://cdn.discordapp.com https://discord.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.google.com https://*.google https://*.adtrafficquality.google https://*.googlesyndication.com https://*.doubleclick.net;
+  frame-src 'self' https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.googlesyndication.com https://*.google.com https://*.google https://*.doubleclick.net;
   frame-ancestors 'none';
   base-uri 'self';
   form-action 'self';
