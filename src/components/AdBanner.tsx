@@ -2,7 +2,13 @@
 
 import React, { useEffect, useState } from "react";
 import { ADS_CONFIG } from "@/config/ads";
-import { Sparkles, ExternalLink, ShieldCheck, Zap, Copy, Check, Flame } from "lucide-react";
+import { Sparkles, ExternalLink, Copy, Check } from "lucide-react";
+
+declare global {
+  interface Window {
+    adsbygoogle?: unknown[];
+  }
+}
 
 interface AdBannerProps {
   slot: "modal" | "leaderboard" | "infeed";
@@ -28,7 +34,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({ slot, className = "" }) => {
   useEffect(() => {
     if (provider === "adsense") {
       try {
-        ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
       } catch {
         // AdSense script already initialized or blocked by client
       }

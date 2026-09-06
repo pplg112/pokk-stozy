@@ -477,3 +477,21 @@ pause',
   NOW()
 ) ON CONFLICT (id) DO NOTHING;
 
+-- 5. Atomic increment function for download counters
+CREATE OR REPLACE FUNCTION increment_downloads_count(row_id TEXT)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  new_count INTEGER;
+BEGIN
+  UPDATE products
+  SET "downloadsCount" = COALESCE("downloadsCount", 0) + 1
+  WHERE id = row_id
+  RETURNING "downloadsCount" INTO new_count;
+  RETURN new_count;
+END;
+$$;
+
+

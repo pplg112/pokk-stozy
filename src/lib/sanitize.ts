@@ -29,18 +29,20 @@ export function sanitizeText(str: string): string {
 /**
  * Protect against JSON Object Prototype Pollution with maximum recursion depth to prevent stack overflow
  */
-export function containsPrototypePollution(obj: any, depth = 0): boolean {
+export function containsPrototypePollution(obj: unknown, depth = 0): boolean {
   if (!obj || typeof obj !== "object") return false;
   if (depth > 10) return true; // Reject deeply nested structures as potential DoS exploit
 
   const dangerousKeys = ["__proto__", "constructor", "prototype"];
+  const record = obj as Record<string, unknown>;
   
-  for (const key of Object.keys(obj)) {
+  for (const key of Object.keys(record)) {
     if (dangerousKeys.includes(key.toLowerCase())) {
       return true;
     }
-    if (typeof obj[key] === "object" && obj[key] !== null) {
-      if (containsPrototypePollution(obj[key], depth + 1)) {
+    const val = record[key];
+    if (typeof val === "object" && val !== null) {
+      if (containsPrototypePollution(val, depth + 1)) {
         return true;
       }
     }

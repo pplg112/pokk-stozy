@@ -2,11 +2,11 @@ import type { NextConfig } from "next";
 
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live;
+  script-src 'self' 'unsafe-inline' https://vercel.live https://pagead2.googlesyndication.com;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   img-src 'self' data: blob: https:;
   font-src 'self' data: https://fonts.gstatic.com;
-  connect-src 'self' https://generativelanguage.googleapis.com https://vitals.vercel-insights.com;
+  connect-src 'self' https://generativelanguage.googleapis.com https://vitals.vercel-insights.com https://*.supabase.co https://cdn.discordapp.com https://discord.com https://pagead2.googlesyndication.com;
   frame-ancestors 'none';
   base-uri 'self';
   form-action 'self';
@@ -17,6 +17,13 @@ const nextConfig: NextConfig = {
   transpilePackages: ["lucide-react"],
   reactStrictMode: true,
   poweredByHeader: false,
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "cdn.discordapp.com" },
+      { protocol: "https", hostname: "*.supabase.co" },
+      { protocol: "https", hostname: "images.unsplash.com" },
+    ],
+  },
   async headers() {
     return [
       {

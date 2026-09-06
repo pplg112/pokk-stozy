@@ -13,9 +13,6 @@ import {
   RotateCcw,
   ShieldCheck,
   Zap,
-  CheckCircle2,
-  ExternalLink,
-  ChevronRight,
   Maximize2,
   Minimize2,
 } from "lucide-react";

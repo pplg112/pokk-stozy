@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { USER_COOKIE_NAME } from "@/lib/userAuth";
 
 export const dynamic = "force-dynamic";

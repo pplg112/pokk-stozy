@@ -24,7 +24,9 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
+.env
 .env*.local
+.env.production
 
 # vercel
 .vercel
@@ -33,4 +35,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.vercel
+# local data & secrets
+/data/discord_config.json
+/data/products.json
+/data/users.json

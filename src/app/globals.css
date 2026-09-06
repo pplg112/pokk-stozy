@@ -172,3 +172,17 @@
 .animate-indeterminate {
   animation: indeterminate 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-orb-1,
+  .animate-orb-2,
+  .animate-orb-3,
+  .animate-cyber-scanline,
+  .animate-spark-1,
+  .animate-spark-2,
+  .animate-spark-3,
+  .animate-indeterminate {
+    animation: none !important;
+  }
+}
+

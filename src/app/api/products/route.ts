@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const products = await db.getProducts(true);
+    const products = await db.getProductsListing(true);
     return NextResponse.json({ success: true, products });
   } catch {
     return NextResponse.json(

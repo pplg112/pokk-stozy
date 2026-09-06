@@ -12,8 +12,6 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
-  Lock,
-  Sparkles,
   Key,
   HelpCircle,
   AlertTriangle

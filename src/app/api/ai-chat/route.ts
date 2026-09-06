@@ -3,13 +3,27 @@ import { db } from "@/lib/db";
 import { DIGITAL_PRODUCTS } from "@/data/products";
 import { checkAiChatRateLimit, getClientIp } from "@/lib/rateLimit";
 
+import { RealProduct } from "@/data/realProducts";
+import { DigitalProduct } from "@/types";
+
 interface ChatMessage {
   role: "user" | "assistant" | "model";
   content: string;
 }
 
+type CatalogItem = DigitalProduct | RealProduct;
+
+interface GeminiContentPart {
+  text: string;
+}
+
+interface GeminiContent {
+  role: "user" | "model";
+  parts: GeminiContentPart[];
+}
+
 // Built-in Offline Esports Knowledge Engine (100% reliable fallback)
-function generateOfflineAiResponse(userMessage: string, catalog: any[]): { reply: string; recommendedIds: string[] } {
+function generateOfflineAiResponse(userMessage: string, catalog: CatalogItem[]): { reply: string; recommendedIds: string[] } {
   const query = userMessage.toLowerCase();
   const recommendedIds: string[] = [];
 
@@ -19,7 +33,7 @@ function generateOfflineAiResponse(userMessage: string, catalog: any[]): { reply
       (p) =>
         p.id.toLowerCase().includes(keyword) ||
         p.name.toLowerCase().includes(keyword) ||
-        p.tagline.toLowerCase().includes(keyword)
+        Boolean(p.tagline?.toLowerCase().includes(keyword))
     );
   };
 
@@ -150,9 +164,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Load available products catalog
-    let catalog: any[] = [];
+    let catalog: CatalogItem[] = [];
     try {
-      const dbProducts = await db.getProducts();
+      const dbProducts = await db.getProductsListing(true);
       catalog = dbProducts.filter((p) => p.active !== false);
     } catch {
       catalog = DIGITAL_PRODUCTS;
@@ -197,7 +211,7 @@ Key Rules & Guidelines:
 Use ONLY the exact IDs listed in the catalog above. If no specific product is relevant, you can omit the tag or recommend the most suitable one (like "pokky-1788529027101").`;
 
     // Construct Gemini contents array
-    const contents: any[] = [];
+    const contents: GeminiContent[] = [];
 
     // Append prior history
     for (const h of history) {
@@ -302,9 +316,10 @@ Use ONLY the exact IDs listed in the catalog above. If no specific product is re
           ? recommendedProductIds
           : generateOfflineAiResponse(message, catalog).recommendedIds,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(
-      { success: false, error: error?.message || "Internal server error" },
+      { success: false, error: message },
       { status: 500 }
     );
   }

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import JSZip from "jszip";
 import { RealProduct } from "@/data/realProducts";
 import { LoadingScreen } from "@/components/LoadingScreen";
@@ -18,18 +17,13 @@ import {
   FileCode2, 
   Eye, 
   EyeOff, 
-  BarChart3, 
   Layers, 
   Sparkles, 
-  Terminal, 
   AlertCircle,
   AlertTriangle,
   X,
   Loader2,
-  Bot,
-  Key,
-  Cpu,
-  Gamepad2
+  Key
 } from "lucide-react";
 
 const CATEGORY_COVER_PRESETS: Record<string, string> = {
@@ -41,7 +35,6 @@ const CATEGORY_COVER_PRESETS: Record<string, string> = {
 };
 
 export default function AdminDashboardPage() {
-  const router = useRouter();
   const [products, setProducts] = useState<RealProduct[]>([]);
   const [stats, setStats] = useState({
     totalDownloads: 0,
@@ -1156,7 +1149,7 @@ export default function AdminDashboardPage() {
                   </label>
                   <select
                     value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value as RealProduct["category"] })}
                     className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-green-400"
                   >
                     <option value="bundles" className="bg-[#11131a]">ชุดรวมครบวงจร (bundles)</option>

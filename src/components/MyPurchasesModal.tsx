@@ -7,10 +7,8 @@ import {
   X, 
   Download, 
   History, 
-  FileCode2, 
   Calendar, 
-  Trash2,
-  Sparkles
+  Trash2
 } from "lucide-react";
 
 interface MyPurchasesModalProps {
@@ -61,8 +59,8 @@ export const MyPurchasesModal: React.FC<MyPurchasesModalProps> = ({
           
           {purchases.length > 0 ? (
             purchases.map((rec) => {
-              const id = (rec as any).downloadId || (rec as any).orderId || "DL";
-              const date = (rec as any).downloadDate || (rec as any).purchaseDate || "ก่อนหน้า";
+              const id = "downloadId" in rec ? rec.downloadId : "orderId" in rec ? rec.orderId : "DL";
+              const date = "downloadDate" in rec ? rec.downloadDate : "purchaseDate" in rec ? rec.purchaseDate : "ก่อนหน้า";
 
               return (
                 <div

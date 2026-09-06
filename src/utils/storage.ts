@@ -33,22 +33,16 @@ export function getStoredDownloads(): DownloadRecord[] {
   }
 }
 
-// Alias for backwards compatibility
-export const getStoredPurchases = getStoredDownloads as unknown as () => PurchaseRecord[];
-
 export function saveStoredDownload(record: DownloadRecord): void {
   if (typeof window === "undefined") return;
   try {
     const current = getStoredDownloads();
-    // Avoid duplicates based on productId
     const updated = [record, ...current.filter((p) => p.productId !== record.productId)];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   } catch (err) {
     console.error("Failed to save download to localStorage", err);
   }
 }
-
-export const saveStoredPurchase = saveStoredDownload as unknown as (record: PurchaseRecord) => void;
 
 export function clearStoredDownloads(): void {
   if (typeof window === "undefined") return;
@@ -82,114 +76,6 @@ export function recordFreeDownload(product: DigitalProduct, downloadId?: string)
   };
 
   saveStoredDownload(record);
-  return record;
-}
-
-/**
- * Trigger authentic, clean PC optimization package download in the browser
- */
-export function triggerFreeDownload(product: DigitalProduct, downloadId?: string): DownloadRecord {
-  const record = recordFreeDownload(product, downloadId);
-  const dlId = record.downloadId;
-  const nowStr = record.downloadDate;
-
-  // Generate clean, safe .bat / .cmd / config script contents
-  const scriptContent = `@echo off
-:: ========================================================================
-:: POKKY STOZY - OFFICIAL FREE COMMUNITY RELEASE
-:: Package     : ${product.name}
-:: Version     : ${product.version}
-:: Tagline     : ${product.tagline}
-:: Compatibility: ${product.compatibility}
-:: License     : Free Open Community Edition (100% Free)
-:: Download ID : ${dlId}
-:: Timestamp   : ${nowStr}
-:: ========================================================================
-:: DISCLAIMER & LIMITATION OF LIABILITY (ข้อตกลงและข้อจำกัดความรับผิดชอบ):
-:: 1. This script is provided "AS IS" without warranty of any kind.
-:: 2. By running this script, you agree that you do so entirely at your own risk.
-:: 3. Pokky Stozy and authors shall NOT be held liable for any damages, hardware failure,
-::    data loss, or system issues. The user assumes all responsibility.
-:: 4. Always create a System Restore Point before tweaking.
-:: 5. A Revert script is included at the bottom of this file.
-:: ========================================================================
-
-title Pokky Stozy - ${product.name} [v${product.version}]
-color 0b
-echo =======================================================================
-echo           POKKY STOZY - WINDOWS & GAMING OPTIMIZER
-echo                   (100% FREE COMMUNITY EDITION)
-echo =======================================================================
-echo [!] DISCLAIMER: Use strictly at your own risk. Author assumes no liability.
-echo.
-echo Package: ${product.name}
-echo Description: ${product.tagline}
-echo.
-
-:: Check for Administrative Privileges
-net session >nul 2>&1
-if %errorLevel% neq 0 (
-    echo [!] ERROR: Please right-click this script and select 'Run as administrator'!
-    echo.
-    pause
-    exit /b 1
-)
-
-echo [*] Administrative privileges verified.
-echo [*] Step 1: Creating automated System Restore Point for safety...
-wmic.exe /Namespace:\\\\root\\default Path SystemRestore Call CreateRestorePoint "PokkyStozy_PreTweak_Backup", 100, 7 >nul 2>&1
-echo [OK] Restore Point created: PokkyStozy_PreTweak_Backup
-echo.
-
-echo [*] Step 2: Applying ${product.name} tweaks...
-echo.
-
-${product.features.map((f, i) => `echo [${i + 1}/${product.features.length}] Applying: ${f}...\ntimeout /t 1 >nul`).join("\n\n")}
-
-:: Optimization Commands Example (Safe Windows Tweaks)
-:: Disabling Telemetry & GameDVR Background Recording
-reg add "HKCU\\System\\GameConfigStore" /v "GameDVR_Enabled" /t REG_DWORD /d 0 /f >nul 2>&1
-reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\GameDVR" /v "AllowGameDVR" /t REG_DWORD /d 0 /f >nul 2>&1
-
-:: Kernel Timer & Latency Tweaks
-bcdedit /set disabledynamictick yes >nul 2>&1
-bcdedit /set useplatformclock no >nul 2>&1
-bcdedit /set useplatformtick yes >nul 2>&1
-
-:: Network Latency & TCP NoDelay
-reg add "HKLM\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters" /v "TcpAckFrequency" /t REG_DWORD /d 1 /f >nul 2>&1
-reg add "HKLM\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters" /v "TCPNoDelay" /t REG_DWORD /d 1 /f >nul 2>&1
-
-echo.
-echo =======================================================================
-echo [SUCCESS] ${product.name} has been applied successfully!
-echo [*] We recommend restarting your PC to activate all kernel timer changes.
-echo =======================================================================
-echo.
-pause
-exit /b 0
-
-:: ========================================================================
-:: REVERT SCRIPT INSTRUCTIONS (วิธีคืนค่าเดิม):
-:: If you wish to revert changes back to Windows defaults, run these commands:
-::   bcdedit /deletevalue disabledynamictick
-::   bcdedit /deletevalue useplatformclock
-::   bcdedit /deletevalue useplatformtick
-::   reg delete "HKCU\\System\\GameConfigStore" /v "GameDVR_Enabled" /f
-:: ========================================================================
-`;
-
-  const blob = new Blob([scriptContent], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  const safeFilename = `${product.name.replace(/[^a-zA-Z0-9_-]/g, "_")}_v${product.version.replace(/[^a-zA-Z0-9]/g, "")}_PokkyStozy.bat`;
-  link.download = safeFilename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-
   return record;
 }
 

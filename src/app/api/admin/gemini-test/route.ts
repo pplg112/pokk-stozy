@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthenticatedRequest } from "@/lib/auth";
 
+interface GeminiModelListItem {
+  name: string;
+  supportedGenerationMethods?: string[];
+  [key: string]: unknown;
+}
+
 export async function POST(request: NextRequest) {
   if (!(await isAuthenticatedRequest(request))) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
@@ -31,8 +37,8 @@ export async function POST(request: NextRequest) {
       if (listRes.ok) {
         const listData = await listRes.json();
         if (Array.isArray(listData.models)) {
-          const available = listData.models
-            .filter((m: any) => 
+          const available = (listData.models as GeminiModelListItem[])
+            .filter((m) => 
               Array.isArray(m.supportedGenerationMethods) && 
               m.supportedGenerationMethods.includes("generateContent") &&
               !m.name.includes("tts") &&
@@ -40,7 +46,7 @@ export async function POST(request: NextRequest) {
               !m.name.includes("image") &&
               !m.name.includes("embedding")
             )
-            .map((m: any) => m.name.replace(/^models\//, ""));
+            .map((m) => m.name.replace(/^models\//, ""));
           if (available.length > 0) {
             // Prioritize flash models
             const flashModels = available.filter((m: string) => m.includes("flash"));
@@ -89,10 +95,11 @@ export async function POST(request: NextRequest) {
       success: false,
       error: lastError || "ไม่สามารถเชื่อมต่อ Google Gemini API ได้ กรุณาตรวจสอบความถูกต้องของ API Key",
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการทดสอบเชื่อมต่อ";
     return NextResponse.json({
       success: false,
-      error: err?.message || "เกิดข้อผิดพลาดในการทดสอบเชื่อมต่อ",
+      error: message,
     });
   }
 }

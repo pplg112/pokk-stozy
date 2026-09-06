@@ -43,6 +43,20 @@ export const metadata: Metadata = {
     siteName: "Pokky Stozy",
     locale: "th_TH",
     type: "website",
+    images: [
+      {
+        url: "/logo.png",
+        width: 512,
+        height: 512,
+        alt: "Pokky Stozy Logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Pokky Stozy",
+    description: "ศูนย์รวมไฟล์และสคริปต์ปรับแต่ง Windows & Gaming PC ลด DPC Latency เพิ่ม FPS ดาวน์โหลดฟรี 100%",
+    images: ["/logo.png"],
   },
   other: {
     "google-adsense-account": "ca-pub-1057391684109886",
@@ -76,15 +90,15 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+      </head>
+      <body className="min-h-screen bg-[#08090d] text-slate-100 antialiased selection:bg-green-500 selection:text-slate-950 font-sans font-normal">
         {ADS_CONFIG.adsense.enabled && ADS_CONFIG.adsense.clientId && (
-          <script
-            async
+          <Script
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADS_CONFIG.adsense.clientId}`}
+            strategy="afterInteractive"
             crossOrigin="anonymous"
           />
         )}
-      </head>
-      <body className="min-h-screen bg-[#08090d] text-slate-100 antialiased selection:bg-green-500 selection:text-slate-950 font-sans font-normal">
         {children}
       </body>
     </html>

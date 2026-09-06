@@ -1,8 +1,31 @@
 import type { NextRequest } from "next/server";
 
 export const ADMIN_COOKIE_NAME = "pokky_admin_token";
-export const ADMIN_SECRET_TOKEN = process.env.ADMIN_SESSION_SECRET || "pokky_admin_session_auth_sec_2026";
-export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "pgm2551dd";
+
+export function getAdminSecret(): string {
+  const secret = process.env.ADMIN_SESSION_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("CRITICAL SECURITY ERROR: Missing ADMIN_SESSION_SECRET environment variable in production.");
+    }
+    return "pokky_dev_admin_session_auth_sec_2026";
+  }
+  return secret;
+}
+
+export function getAdminPassword(): string {
+  const password = process.env.ADMIN_PASSWORD;
+  if (!password) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("CRITICAL SECURITY ERROR: Missing ADMIN_PASSWORD environment variable in production.");
+    }
+    return "pgm2551dd";
+  }
+  return password;
+}
+
+export const ADMIN_SECRET_TOKEN = getAdminSecret();
+export const ADMIN_PASSWORD = getAdminPassword();
 
 /**
  * Constant-time string comparison that runs in constant time
@@ -111,11 +134,22 @@ export async function verifySessionToken(token: string | undefined | null, clien
 }
 
 /**
+ * Resolve client IP consistently across Middleware and API route handlers
+ */
+export function resolveClientIp(request: NextRequest): string {
+  const directIp = (request as unknown as { ip?: string }).ip;
+  return (
+    (directIp && typeof directIp === "string" ? directIp.trim() : null) ||
+    request.headers.get("x-real-ip")?.trim() ||
+    (request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "127.0.0.1")
+  );
+}
+
+/**
  * Check if incoming NextRequest is authenticated by an active admin session
  */
 export async function isAuthenticatedRequest(request: NextRequest): Promise<boolean> {
   const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value || request.headers.get("x-admin-token");
-  const forwarded = request.headers.get("x-forwarded-for");
-  const clientIp = forwarded ? forwarded.split(",")[0].trim() : request.headers.get("x-real-ip") || "";
+  const clientIp = resolveClientIp(request);
   return verifySessionToken(token, clientIp);
 }

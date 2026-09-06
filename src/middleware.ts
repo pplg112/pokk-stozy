@@ -36,7 +36,8 @@ function isAllowedOrigin(originHeader: string | null, refererHeader: string | nu
     }
   }
 
-  // If both Origin and Referer are absent on standard browser POST/PUT, reject
+  // Allow requests without Origin/Referer to accommodate non-browser
+  // API clients and privacy extensions. Individual routes maintain authentication.
   return true;
 }
 

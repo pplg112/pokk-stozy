@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Review, ReviewReply, DiscordUser } from "@/types";
+import { Review, DiscordUser } from "@/types";
 import {
   Star,
   MessageSquare,
@@ -12,8 +12,6 @@ import {
   Upload,
   Trash2,
   AlertCircle,
-  ShieldCheck,
-  User,
   LogIn,
 } from "lucide-react";
 

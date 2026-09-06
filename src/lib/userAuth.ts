@@ -4,7 +4,17 @@ import { NextRequest } from "next/server";
 import { DiscordUser } from "@/types";
 
 export const USER_COOKIE_NAME = "pokky_user_session";
-const SESSION_SECRET = process.env.USER_SESSION_SECRET || process.env.ADMIN_SESSION_SECRET || "pokky_user_oauth_secret_key_2026";
+
+function getSessionSecret(): string {
+  const secret = process.env.USER_SESSION_SECRET || process.env.ADMIN_SESSION_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("CRITICAL SECURITY ERROR: Missing USER_SESSION_SECRET or ADMIN_SESSION_SECRET environment variable in production.");
+    }
+    return "pokky_dev_user_oauth_secret_key_2026";
+  }
+  return secret;
+}
 
 export interface DiscordConfig {
   clientId: string;
@@ -12,10 +22,6 @@ export interface DiscordConfig {
 }
 
 import os from "os";
-
-// Embedded permanent Discord OAuth credentials requested by owner ("ฝังไปเลยไม่ต้องตั้งค่าตลอด")
-const EMBEDDED_DISCORD_CLIENT_ID = "1545830613741871114";
-const EMBEDDED_DISCORD_CLIENT_SECRET = "EOZcTq4D-9wI0eS0BM2e5Pm1YLkyKfHX";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const DISCORD_CONFIG_FILE = path.join(DATA_DIR, "discord_config.json");
@@ -52,10 +58,6 @@ export function getDiscordConfig(): DiscordConfig {
       }
     } catch {}
   }
-
-  // 3. Fallback to embedded credentials permanently
-  if (!clientId) clientId = EMBEDDED_DISCORD_CLIENT_ID;
-  if (!clientSecret) clientSecret = EMBEDDED_DISCORD_CLIENT_SECRET;
 
   cachedConfig = { clientId, clientSecret };
   return cachedConfig;
@@ -171,7 +173,7 @@ export async function generateSignedOAuthState(returnUrl: string = "/"): Promise
   const ts = Date.now();
   const payload = JSON.stringify({ returnUrl: safeReturnUrl, nonce, ts });
   const b64 = Buffer.from(payload, "utf-8").toString("base64url");
-  const sig = await hmacSign(b64, SESSION_SECRET);
+  const sig = await hmacSign(b64, getSessionSecret());
   return `${b64}.${sig}`;
 }
 
@@ -184,16 +186,11 @@ export async function verifySignedOAuthState(stateString: string | null | undefi
   }
   const parts = stateString.split(".");
   if (parts.length !== 2) {
-    try {
-      const parsed = JSON.parse(Buffer.from(stateString, "base64url").toString("utf-8"));
-      return { valid: true, returnUrl: sanitizeReturnUrl(parsed?.returnUrl) };
-    } catch {
-      return { valid: false, returnUrl: "/" };
-    }
+    return { valid: false, returnUrl: "/" };
   }
 
   const [b64, sig] = parts;
-  const expectedSig = await hmacSign(b64, SESSION_SECRET);
+  const expectedSig = await hmacSign(b64, getSessionSecret());
   if (!timingSafeEqual(sig, expectedSig)) {
     return { valid: false, returnUrl: "/" };
   }
@@ -284,7 +281,7 @@ export async function createSignedUserToken(user: DiscordUser): Promise<string> 
     exp: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days
   });
   const encodedPayload = Buffer.from(payload, "utf-8").toString("base64url");
-  const signature = await hmacSign(encodedPayload, SESSION_SECRET);
+  const signature = await hmacSign(encodedPayload, getSessionSecret());
   return `${encodedPayload}.${signature}`;
 }
 
@@ -294,7 +291,7 @@ export async function verifySignedUserToken(token: string): Promise<DiscordUser 
   if (parts.length !== 2) return null;
 
   const [encodedPayload, signature] = parts;
-  const expectedSig = await hmacSign(encodedPayload, SESSION_SECRET);
+  const expectedSig = await hmacSign(encodedPayload, getSessionSecret());
   if (!timingSafeEqual(signature, expectedSig)) return null;
 
   try {

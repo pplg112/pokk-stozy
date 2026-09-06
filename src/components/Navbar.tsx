@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Sparkles, LogOut, User as UserIcon, Bot } from "lucide-react";
+import { Sparkles, LogOut, User as UserIcon } from "lucide-react";
 import { DiscordIcon } from "@/components/icons/DiscordIcon";
 import { DiscordUser } from "@/types";
 

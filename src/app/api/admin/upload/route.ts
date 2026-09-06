@@ -12,10 +12,8 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file");
 
     if (
-      !file ||
-      typeof file === "string" ||
-      typeof (file as any).arrayBuffer !== "function" ||
-      typeof file.name !== "string" ||
+      !(file instanceof File) ||
+      !file.name ||
       typeof file.size !== "number"
     ) {
       return NextResponse.json({ success: false, error: "กรุณาเลือกไฟล์ที่ถูกต้องสำหรับการอัปโหลด" }, { status: 400 });
@@ -23,23 +21,19 @@ export async function POST(request: NextRequest) {
 
     if (file.size > 4.5 * 1024 * 1024) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: `ไฟล์มีขนาด ${(file.size / (1024 * 1024)).toFixed(1)} MB ซึ่งเกินขีดจำกัดของเซิร์ฟเวอร์ (4.5 MB) กรุณาระบุลิงก์ดาวน์โหลดตรง เช่น Google Drive หรือ Mediafire แทน` 
-        }, 
+        { success: false, error: "ขนาดไฟล์ต้องไม่เกิน 4.5 MB เพื่อความรวดเร็วและประสิทธิภาพของระบบ" },
         { status: 400 }
       );
     }
 
-    const filename = file.name;
-    const sizeInBytes = file.size;
-    const formattedSize =
-      sizeInBytes > 1024 * 1024
-        ? `${(sizeInBytes / (1024 * 1024)).toFixed(1)} MB`
-        : `${Math.round(sizeInBytes / 1024 || 1)} KB`;
-
+    const filename = file.name.replace(/\0/g, "").trim();
     const extension = filename.split(".").pop()?.toUpperCase() || "BAT";
     const fileFormat = `.${extension}`;
+    const sizeBytes = file.size;
+    const formattedSize =
+      sizeBytes > 1024 * 1024
+        ? `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`
+        : `${Math.round(sizeBytes / 1024)} KB`;
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -50,9 +44,14 @@ export async function POST(request: NextRequest) {
         const AdmZipModule = await import("adm-zip");
         const AdmZip = AdmZipModule.default || AdmZipModule;
         const zip = new AdmZip(buffer);
-        const zipEntries = zip.getEntries().filter((e: any) => !e.isDirectory);
+        interface AdmZipEntry {
+          entryName: string;
+          isDirectory: boolean;
+          getData: () => Buffer;
+        }
+        const zipEntries = (zip.getEntries() as unknown as AdmZipEntry[]).filter((e) => !e.isDirectory);
 
-        const includedFiles = zipEntries.map((e: any) => {
+        const includedFiles = zipEntries.map((e) => {
           // Zip Slip Defense: sanitize entryName against path traversal
           const safeEntryName = e.entryName
             .replace(/\0/g, "")
@@ -85,7 +84,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (!analysisContent) {
-          analysisContent = `แพ็กเกจ ZIP ประกอบด้วยไฟล์: ${includedFiles.map((f: any) => f.filename).join(", ")}`;
+          analysisContent = `แพ็กเกจ ZIP ประกอบด้วยไฟล์: ${includedFiles.map((f) => f.filename).join(", ")}`;
         }
 
         // Store entire zip binary intact as base64 data URL

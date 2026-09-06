@@ -20,9 +20,10 @@ export async function PUT(
     }
 
     return NextResponse.json({ success: true, product: updated });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Update failed";
     console.error("PUT /api/admin/products/[id] error:", error);
-    return NextResponse.json({ success: false, error: error?.message || "Update failed" }, { status: 500 });
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
 
@@ -43,8 +44,9 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true, message: "Deleted successfully" });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Delete failed";
     console.error("DELETE /api/admin/products/[id] error:", error);
-    return NextResponse.json({ success: false, error: error?.message || "Delete failed" }, { status: 500 });
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

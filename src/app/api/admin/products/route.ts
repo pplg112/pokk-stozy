@@ -29,10 +29,11 @@ export async function POST(request: NextRequest) {
 
     const created = await db.createProduct(data);
     return NextResponse.json({ success: true, product: created });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการบันทึกแพ็กเกจ";
     console.error("POST /api/admin/products error:", error);
     return NextResponse.json(
-      { success: false, error: error?.message || "เกิดข้อผิดพลาดในการบันทึกแพ็กเกจ" },
+      { success: false, error: message },
       { status: 500 }
     );
   }

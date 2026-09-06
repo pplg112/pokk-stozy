@@ -10,7 +10,7 @@ import { GeminiAiChatModal } from "@/components/GeminiAiChatModal";
 import { DiscordAuthModal } from "@/components/DiscordAuthModal";
 import { ProductReviewsSection } from "@/components/ProductReviewsSection";
 import { DIGITAL_PRODUCTS } from "@/data/products";
-import { DigitalProduct, DownloadRecord, DiscordUser } from "@/types";
+import { DigitalProduct, DiscordUser } from "@/types";
 import { DiscordIcon } from "@/components/icons/DiscordIcon";
 import {
   ArrowLeft,
@@ -25,7 +25,6 @@ import {
   FileCode2,
   CheckCircle2,
   Terminal,
-  ExternalLink,
   Copy,
   ChevronRight,
   Info,
@@ -43,7 +42,6 @@ export default function SettingDetailPage({ params }: PageProps) {
   const productId = resolvedParams.id;
 
   const [product, setProduct] = useState<DigitalProduct | null>(null);
-  const [allProducts, setAllProducts] = useState<DigitalProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"overview" | "code" | "reviews">("overview");
   const [copiedLink, setCopiedLink] = useState(false);
@@ -86,22 +84,17 @@ export default function SettingDetailPage({ params }: PageProps) {
     async function loadData() {
       try {
         setLoading(true);
-        const res = await fetch("/api/products", { cache: "no-store" });
-        const data = await res.json();
-        const list: DigitalProduct[] =
-          data.success && Array.isArray(data.products) && data.products.length > 0
-            ? data.products
-            : DIGITAL_PRODUCTS;
-
-        setAllProducts(list);
-        const found = list.find((p) => p.id === productId);
-        if (found) {
-          setProduct(found);
-        } else {
-          // fallback search in static products
-          const staticFound = DIGITAL_PRODUCTS.find((p) => p.id === productId);
-          setProduct(staticFound || null);
+        const res = await fetch(`/api/products/${productId}`, { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.product) {
+            setProduct(data.product);
+            return;
+          }
         }
+        // Fallback search in static products
+        const staticFound = DIGITAL_PRODUCTS.find((p) => p.id === productId);
+        setProduct(staticFound || null);
       } catch {
         const staticFound = DIGITAL_PRODUCTS.find((p) => p.id === productId);
         setProduct(staticFound || null);
@@ -175,7 +168,7 @@ export default function SettingDetailPage({ params }: PageProps) {
     );
   }
 
-  const relatedProducts = allProducts.filter((p) => p.id !== product.id).slice(0, 3);
+  const relatedProducts = DIGITAL_PRODUCTS.filter((p) => p.id !== product.id).slice(0, 3);
 
   return (
     <div className="min-h-screen bg-[#07080c] text-slate-100 flex flex-col font-sans selection:bg-green-400 selection:text-slate-950 relative overflow-x-hidden">
@@ -568,7 +561,7 @@ export default function SettingDetailPage({ params }: PageProps) {
       <GeminiAiChatModal
         isOpen={isAiChatOpen}
         onClose={() => setIsAiChatOpen(false)}
-        allProducts={allProducts}
+        allProducts={DIGITAL_PRODUCTS}
         onDownloadProduct={() => setIsDownloading(true)}
         onViewProduct={() => {}}
         initialPrompt={aiInitialPrompt}

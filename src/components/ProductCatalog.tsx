@@ -207,7 +207,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
           </div>
           <select
             value={sortBy}
-            onChange={(e) => handleSortChange(e.target.value as any)}
+            onChange={(e) => handleSortChange(e.target.value as "popular" | "rating" | "name")}
             className="px-3.5 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/15 focus:border-green-400 focus:shadow-[0_0_15px_rgba(74,222,128,0.2)] text-xs sm:text-sm text-white focus:outline-none font-sans cursor-pointer transition-all"
           >
             <option value="popular" className="bg-[#11131a] text-white">ยอดดาวน์โหลดสูงสุด</option>

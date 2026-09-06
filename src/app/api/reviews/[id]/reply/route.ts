@@ -98,9 +98,10 @@ export async function POST(
       success: true,
       reply,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to submit reply";
     return NextResponse.json(
-      { success: false, error: error?.message || "Failed to submit reply" },
+      { success: false, error: message },
       { status: 500 }
     );
   }

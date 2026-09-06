@@ -15,7 +15,6 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import { DIGITAL_PRODUCTS } from "@/data/products";
 import { DigitalProduct, DownloadRecord, DiscordUser } from "@/types";
 import { ArrowUp, Sparkles, Bot, ArrowRight, Zap, Flame, Wifi, Cpu } from "lucide-react";
-import Link from "next/link";
 
 export default function HomePage() {
   const [productsList, setProductsList] = useState<DigitalProduct[]>([]);

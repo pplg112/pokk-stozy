@@ -133,7 +133,13 @@ function fallbackAnalyzeCode(filename: string, content: string): AnalysisResult 
   };
 }
 
-function cleanAndParseJson(raw: string): any {
+interface GeminiModelListItem {
+  name: string;
+  supportedGenerationMethods?: string[];
+  [key: string]: unknown;
+}
+
+function cleanAndParseJson(raw: string): Record<string, unknown> {
   if (!raw) throw new Error("Empty AI response");
   let cleaned = raw.trim();
   if (cleaned.startsWith("```")) {
@@ -229,8 +235,8 @@ Do NOT wrap in markdown fences other than raw JSON or json block. Respond ONLY w
       if (listRes.ok) {
         const listData = await listRes.json();
         if (Array.isArray(listData.models)) {
-          const available = listData.models
-            .filter((m: any) => 
+          const available = (listData.models as GeminiModelListItem[])
+            .filter((m) => 
               Array.isArray(m.supportedGenerationMethods) && 
               m.supportedGenerationMethods.includes("generateContent") &&
               !m.name.includes("tts") &&
@@ -238,7 +244,7 @@ Do NOT wrap in markdown fences other than raw JSON or json block. Respond ONLY w
               !m.name.includes("image") &&
               !m.name.includes("embedding")
             )
-            .map((m: any) => m.name.replace(/^models\//, ""));
+            .map((m) => m.name.replace(/^models\//, ""));
           if (available.length > 0) {
             const flashModels = available.filter((m: string) => m.includes("flash"));
             candidateModels = Array.from(new Set([...flashModels, ...available, ...candidateModels]));
@@ -251,8 +257,8 @@ Do NOT wrap in markdown fences other than raw JSON or json block. Respond ONLY w
 
     for (const model of candidateModels) {
       try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const geminiRes = await fetch(geminiUrl, {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const res = await fetch(url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -261,14 +267,14 @@ Do NOT wrap in markdown fences other than raw JSON or json block. Respond ONLY w
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
-              responseMimeType: "application/json",
               temperature: 0.2,
+              maxOutputTokens: 2500,
             },
           }),
         });
 
-        if (geminiRes.ok) {
-          const data = await geminiRes.json();
+        if (res.ok) {
+          const data = await res.json();
           const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
           if (rawText) {
             const parsed = cleanAndParseJson(rawText);
@@ -276,11 +282,19 @@ Do NOT wrap in markdown fences other than raw JSON or json block. Respond ONLY w
               success: true,
               isGemini: true,
               model,
-              data: parsed,
+              data: {
+                name: parsed.name || reqFilename.replace(/\.[^/.]+$/, ""),
+                tagline: parsed.tagline || "ชุดสคริปต์ปรับแต่งประสิทธิภาพขั้นสูง",
+                category: parsed.category || "os-scripts",
+                description: parsed.description || "",
+                features: Array.isArray(parsed.features) ? parsed.features : [],
+                requirements: Array.isArray(parsed.requirements) ? parsed.requirements : [],
+                revertScript: parsed.revertScript || "",
+              },
             });
           }
         } else {
-          const errBody = await geminiRes.text();
+          const errBody = await res.text();
           try {
             const errObj = JSON.parse(errBody);
             lastError = errObj.error?.message || errBody;
@@ -289,8 +303,8 @@ Do NOT wrap in markdown fences other than raw JSON or json block. Respond ONLY w
           }
           console.warn(`Gemini model ${model} returned error:`, lastError);
         }
-      } catch (callErr: any) {
-        lastError = callErr?.message || String(callErr);
+      } catch (callErr: unknown) {
+        lastError = callErr instanceof Error ? callErr.message : String(callErr);
         console.warn(`Gemini model ${model} fetch failed:`, lastError);
       }
     }
@@ -303,15 +317,15 @@ Do NOT wrap in markdown fences other than raw JSON or json block. Respond ONLY w
       fallbackReason: lastError || "Google Gemini API ไม่สามารถประมวลผลได้",
       data: fallbackResult,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "ระบบขัดข้องระหว่างวิเคราะห์โค้ด";
     console.error("AI Analysis failed:", err);
     const fallbackResult = fallbackAnalyzeCode(reqFilename, reqContent);
     return NextResponse.json({
       success: true,
       isGemini: false,
-      fallbackReason: err?.message || "ระบบขัดข้องระหว่างวิเคราะห์โค้ด",
+      fallbackReason: message,
       data: fallbackResult,
     });
   }
 }
-

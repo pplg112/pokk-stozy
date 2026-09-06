@@ -180,7 +180,39 @@ function sanitizeCode(val: string | undefined | null): string {
   return val.replace(/\0/g, "");
 }
 
-function parseProduct(prod: any): RealProduct {
+export interface SupabaseProductRow {
+  id: string;
+  name: string;
+  tagline?: string;
+  category: RealProduct["category"];
+  price?: number;
+  originalPrice?: number;
+  isFree?: boolean;
+  badge?: string;
+  popular?: boolean;
+  version?: string;
+  fileFormat?: string;
+  fileSize?: string;
+  downloadsCount?: number;
+  rating?: number;
+  reviewCount?: number;
+  compatibility?: string;
+  includedFiles?: RealProduct["includedFiles"];
+  features?: string[];
+  requirements?: string[];
+  description?: string;
+  hasRevertScript?: boolean;
+  downloadUrl?: string;
+  imageUrl?: string;
+  active?: boolean;
+  scriptContent?: string;
+  revertScript?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
+}
+
+function parseProduct(prod: SupabaseProductRow): RealProduct {
   let downloadUrl = prod.downloadUrl;
   let scriptContent = prod.scriptContent || "";
 
@@ -198,13 +230,116 @@ function parseProduct(prod: any): RealProduct {
   }
 
   return {
-    ...prod,
-    downloadUrl,
+    id: prod.id,
+    name: prod.name,
+    tagline: prod.tagline || "",
+    description: prod.description || "",
+    category: prod.category,
+    fileFormat: prod.fileFormat || ".BAT",
+    fileSize: prod.fileSize || "50 KB",
+    version: prod.version || "v1.0.0",
+    compatibility: prod.compatibility || "Windows 10 / 11 (64-bit)",
+    downloadsCount: typeof prod.downloadsCount === "number" ? prod.downloadsCount : 0,
+    rating: typeof prod.rating === "number" ? prod.rating : 0,
+    reviewCount: typeof prod.reviewCount === "number" ? prod.reviewCount : 0,
+    popular: Boolean(prod.popular),
+    active: prod.active !== false,
+    features: Array.isArray(prod.features) ? prod.features : [],
+    requirements: Array.isArray(prod.requirements) ? prod.requirements : [],
+    includedFiles: Array.isArray(prod.includedFiles) ? prod.includedFiles : [],
     scriptContent,
+    revertScript: prod.revertScript || "",
+    imageUrl: prod.imageUrl,
+    downloadUrl,
+    createdAt: prod.createdAt || new Date().toISOString(),
+    updatedAt: prod.updatedAt || new Date().toISOString(),
   };
 }
 
+const LISTING_COLUMNS = "id, name, tagline, category, price, originalPrice, isFree, badge, popular, version, fileFormat, fileSize, downloadsCount, rating, reviewCount, compatibility, includedFiles, features, requirements, description, hasRevertScript, imageUrl, active";
+
 export const db = {
+  /**
+   * Lean listing query for store catalog - strips multi-megabyte script content & base64 payloads
+   */
+  async getProductsListing(activeOnly = true): Promise<RealProduct[]> {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        let query = supabase.from("products").select(LISTING_COLUMNS);
+        if (activeOnly) {
+          query = query.eq("active", true);
+        }
+        const { data, error } = await query.order("downloadsCount", { ascending: false });
+        if (!error && data && data.length > 0) {
+          return (data as unknown as SupabaseProductRow[]).map((p) => {
+            const parsed = parseProduct(p);
+            return {
+              ...parsed,
+              scriptContent: "",
+              revertScript: "",
+            };
+          });
+        }
+      } catch (e) {
+        console.error("Supabase getProductsListing error, using fallback:", e);
+      }
+    }
+
+    const products = ensureDbFile();
+    const reviews = ensureReviewsFile();
+
+    const enriched = products.map((prod) => {
+      const { rating, reviewCount } = calculateProductRating(prod.id, reviews);
+      return parseProduct({
+        ...prod,
+        rating,
+        reviewCount,
+        scriptContent: "",
+        revertScript: "",
+      });
+    });
+
+    if (activeOnly) {
+      return enriched.filter((p) => p.active);
+    }
+    return [...enriched];
+  },
+
+  /**
+   * Lean metadata query for a single product page
+   */
+  async getProductMetadata(id: string): Promise<RealProduct | undefined> {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from("products")
+          .select(LISTING_COLUMNS)
+          .eq("id", id)
+          .maybeSingle();
+        if (!error && data) {
+          const parsed = parseProduct(data as unknown as SupabaseProductRow);
+          return {
+            ...parsed,
+            scriptContent: "",
+            revertScript: "",
+          };
+        }
+      } catch (e) {
+        console.error("Supabase getProductMetadata error, using fallback:", e);
+      }
+    }
+
+    const prod = await this.getProductById(id);
+    if (!prod) return undefined;
+    return {
+      ...prod,
+      scriptContent: "",
+      revertScript: "",
+    };
+  },
+
   async getProducts(activeOnly = true): Promise<RealProduct[]> {
     const supabase = getSupabase();
     if (supabase) {
@@ -215,7 +350,7 @@ export const db = {
         }
         const { data, error } = await query.order("downloadsCount", { ascending: false });
         if (!error && data && data.length > 0) {
-          return (data as any[]).map(parseProduct);
+          return (data as unknown as SupabaseProductRow[]).map(parseProduct);
         }
       } catch (e) {
         console.error("Supabase getProducts error, using fallback:", e);
@@ -460,6 +595,13 @@ export const db = {
     const supabase = getSupabase();
     if (supabase) {
       try {
+        // Try atomic PostgreSQL RPC function if created
+        const { data: rpcCount, error: rpcError } = await supabase.rpc("increment_downloads_count", { row_id: id });
+        if (!rpcError && typeof rpcCount === "number") {
+          return rpcCount;
+        }
+
+        // Standard fallback
         const { data: prod } = await supabase.from("products").select("downloadsCount").eq("id", id).maybeSingle();
         const currentCount = typeof prod?.downloadsCount === "number" ? prod.downloadsCount : 0;
         const newCount = currentCount + 1;

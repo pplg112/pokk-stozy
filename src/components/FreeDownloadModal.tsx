@@ -12,12 +12,8 @@ import {
   CheckCircle2, 
   ShieldCheck, 
   FileCode2, 
-  Clock,
-  Sparkles,
   Loader2,
-  AlertTriangle,
-  ShieldAlert,
-  LogIn
+  ShieldAlert
 } from "lucide-react";
 
 interface FreeDownloadModalProps {
