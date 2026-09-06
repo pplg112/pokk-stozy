@@ -256,7 +256,7 @@ function parseProduct(prod: SupabaseProductRow): RealProduct {
   };
 }
 
-const LISTING_COLUMNS = "id, name, tagline, category, price, originalPrice, isFree, badge, popular, version, fileFormat, fileSize, downloadsCount, rating, reviewCount, compatibility, includedFiles, features, requirements, description, hasRevertScript, imageUrl, active";
+const LISTING_COLUMNS = "id, name, tagline, description, category, fileFormat, fileSize, version, compatibility, downloadsCount, rating, reviewCount, popular, active, features, requirements, includedFiles, imageUrl, createdAt, updatedAt";
 
 export const db = {
   /**
