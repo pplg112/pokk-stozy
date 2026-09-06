@@ -6,7 +6,6 @@ import { RealProduct } from "@/data/realProducts";
 import { AppUser } from "@/types";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { DiscordAuthModal } from "@/components/DiscordAuthModal";
-import { R2StorageModal } from "@/components/R2StorageModal";
 import { 
   Plus, 
   Trash2, 
@@ -34,8 +33,7 @@ import {
   RefreshCw,
   Copy,
   Check,
-  Zap,
-  Cloud
+  Zap
 } from "lucide-react";
 export default function AdminDashboardPage() {
   const [products, setProducts] = useState<RealProduct[]>([]);
@@ -70,31 +68,6 @@ export default function AdminDashboardPage() {
       const data = await res.json();
       if (data.success) {
         setIsDiscordConfigured(Boolean(data.isConfigured));
-      }
-    } catch {}
-  };
-
-  // Cloudflare R2 Storage State
-  const [isR2Configured, setIsR2Configured] = useState(false);
-  const [isR2ModalOpen, setIsR2ModalOpen] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{
-    isUploading: boolean;
-    progress: number;
-    filename: string;
-  }>({
-    isUploading: false,
-    progress: 0,
-    filename: "",
-  });
-
-  const checkR2Status = async () => {
-    try {
-      const res = await fetch("/api/admin/r2/config", {
-        headers: getAuthHeaders(),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setIsR2Configured(Boolean(data.isConfigured));
       }
     } catch {}
   };
@@ -356,7 +329,6 @@ export default function AdminDashboardPage() {
     loadData();
     loadDiscordUsers();
     checkDiscordStatus();
-    checkR2Status();
     const savedKey = typeof window !== "undefined" ? localStorage.getItem("pokky_gemini_api_key") || "" : "";
     setGeminiApiKey(savedKey);
     setTempApiKey(savedKey);
@@ -570,58 +542,6 @@ export default function AdminDashboardPage() {
       const MAX_INLINE_PAYLOAD_BYTES = 1 * 1024 * 1024;
       const isLargeFile = sizeInBytes > MAX_INLINE_PAYLOAD_BYTES;
 
-      // 1. If Cloudflare R2 is configured, direct-upload package to R2 via presigned URL with progress tracking
-      let r2DownloadIdentifier = "";
-      if (isR2Configured) {
-        try {
-          setAiStatusMessage(`กำลังเตรียมอัปโหลด "${filename}" ไปยัง Cloudflare R2...`);
-          const presignRes = await fetch("/api/admin/r2/presign", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-            body: JSON.stringify({
-              filename: file.name,
-              contentType: file.type || "application/octet-stream",
-            }),
-          });
-          const presignData = await presignRes.json();
-          if (presignData.success && presignData.uploadUrl) {
-            setUploadProgress({ isUploading: true, progress: 0, filename: file.name });
-            setAiStatusMessage(`กำลังอัปโหลด "${file.name}" ไปยัง Cloudflare R2...`);
-
-            await new Promise<void>((resolve, reject) => {
-              const xhr = new XMLHttpRequest();
-              xhr.open("PUT", presignData.uploadUrl);
-              xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
-
-              xhr.upload.onprogress = (evt) => {
-                if (evt.lengthComputable) {
-                  const percent = Math.round((evt.loaded / evt.total) * 100);
-                  setUploadProgress({ isUploading: true, progress: percent, filename: file.name });
-                  setAiStatusMessage(`กำลังอัปโหลดไปยัง Cloudflare R2 (${percent}%)...`);
-                }
-              };
-
-              xhr.onload = () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                  resolve();
-                } else {
-                  reject(new Error(`R2 upload status ${xhr.status}`));
-                }
-              };
-              xhr.onerror = () => reject(new Error("Network failure during R2 upload"));
-              xhr.send(file);
-            });
-
-            r2DownloadIdentifier = presignData.downloadIdentifier;
-            setUploadProgress({ isUploading: false, progress: 100, filename: file.name });
-            setMessage(`อัปโหลดไฟล์ "${filename}" ไปยัง Cloudflare R2 เรียบร้อยแล้ว!`);
-          }
-        } catch (r2UploadErr) {
-          console.warn("R2 auto upload failed, falling back to standard handling:", r2UploadErr);
-          setUploadProgress({ isUploading: false, progress: 0, filename: "" });
-        }
-      }
-
       if (extension === "ZIP") {
         try {
           const zip = await JSZip.loadAsync(file);
@@ -689,14 +609,12 @@ export default function AdminDashboardPage() {
             analysisContent = `แพ็กเกจ ZIP ประกอบด้วยไฟล์: ${uploadedIncludedFiles.map((f) => f.filename).join(", ")}`;
           }
 
-          if (isLargeFile || r2DownloadIdentifier) {
-            scriptContent = `@echo off\ntitle ${filename}\necho [POKKY STOZY] แพ็กเกจไฟล์ ZIP ${filename} (${formattedSize})\necho ${r2DownloadIdentifier ? "ดาวน์โหลดผ่านระบบ Cloudflare R2 Storage อัตโนมัติ" : "กรุณาดาวน์โหลดผ่านลิงก์ตรงภายนอกความเร็วสูงที่ระบุไว้ในหน้าร้าน"}\npause`;
-            if (!r2DownloadIdentifier) {
-              showAlert(
-                `ตรวจพบไฟล์ ZIP ขนาด ${formattedSize} (เกิน 1 MB) \n\nระบบและ Gemini AI ได้วิเคราะห์โครงสร้างไฟล์เรียบร้อยแล้ว เพื่อความเสถียรสูงสุด กรุณาใส่ "ลิงก์ดาวน์โหลดตรง (Google Drive / Mediafire / Mega)" หรือเปิดใช้ Cloudflare R2`,
-                "แพ็กเกจขนาดใหญ่ (แนะนำใช้ Cloudflare R2 หรือลิงก์ตรง)"
-              );
-            }
+          if (isLargeFile) {
+            scriptContent = `@echo off\ntitle ${filename}\necho [POKKY STOZY] แพ็กเกจไฟล์ ZIP ${filename} (${formattedSize})\necho กรุณาดาวน์โหลดผ่านลิงก์ตรงภายนอกความเร็วสูงที่ระบุไว้ในหน้าร้าน\npause`;
+            showAlert(
+              `ตรวจพบไฟล์ ZIP ขนาด ${formattedSize} (เกิน 1 MB) \n\nระบบและ Gemini AI ได้วิเคราะห์โครงสร้างไฟล์เรียบร้อยแล้ว เพื่อความเสถียรสูงสุดและป้องกันไม่ให้ติดขีดจำกัดขนาดของระบบ กรุณาใส่ "ลิงก์ดาวน์โหลดตรง (Google Drive / Mediafire / Mega)" ในช่องข้อมูลด้านล่าง`,
+              "แพ็กเกจขนาดใหญ่ (แนะนำใช้ลิงก์ตรง)"
+            );
           } else {
             // Read binary ZIP directly as Base64 Data URL only if <= 1 MB
             scriptContent = await readFileAsDataURL(file);
@@ -709,7 +627,7 @@ export default function AdminDashboardPage() {
       } else {
         // Text script file (.bat, .cmd, .reg, .ps1, .txt) or other binary format
         const isTextScript = ["BAT", "CMD", "REG", "PS1", "TXT"].includes(extension);
-        if (isTextScript && !isLargeFile && !r2DownloadIdentifier) {
+        if (isTextScript && !isLargeFile) {
           try {
             scriptContent = await readFileAsText(file);
             analysisContent = scriptContent.slice(0, 5000);
@@ -730,17 +648,15 @@ export default function AdminDashboardPage() {
           } catch {
             analysisContent = `แพ็กเกจไฟล์: ${filename} (ขนาด: ${formattedSize})`;
           }
-          scriptContent = `@echo off\ntitle ${filename}\necho [POKKY STOZY] แพ็กเกจ ${filename} (${formattedSize})\necho ${r2DownloadIdentifier ? "ดาวน์โหลดผ่าน Cloudflare R2 Storage อัตโนมัติ" : "กรุณาดาวน์โหลดผ่านลิงก์ตรงภายนอกความเร็วสูงที่ระบุไว้ในหน้าร้าน"}\npause`;
+          scriptContent = `@echo off\ntitle ${filename}\necho [POKKY STOZY] แพ็กเกจ ${filename} (${formattedSize})\necho กรุณาดาวน์โหลดผ่านลิงก์ตรงภายนอกความเร็วสูงที่ระบุไว้ในหน้าร้าน\npause`;
           uploadedIncludedFiles = [
             { filename: filename, description: `ไฟล์แพ็กเกจ (${formattedSize})` },
             { filename: `REVERT_${filename.replace(/\.[^/.]+$/, "")}.bat`, description: "สคริปต์กู้คืนค่าเดิมของระบบ" }
           ];
-          if (!r2DownloadIdentifier) {
-            showAlert(
-              `ไฟล์ "${filename}" มีขนาด ${formattedSize} ${!isTextScript ? `(ไฟล์ .${extension})` : "(มากกว่า 1 MB)"}\n\nระบบและ Gemini AI ได้วิเคราะห์โครงสร้างไฟล์เรียบร้อยแล้ว เพื่อความเร็วสูงสุด กรุณาใส่ "ลิงก์ดาวน์โหลดตรง" หรือเชื่อมต่อ Cloudflare R2`,
-              "แพ็กเกจขนาดใหญ่"
-            );
-          }
+          showAlert(
+            `ไฟล์ "${filename}" มีขนาด ${formattedSize} ${!isTextScript ? `(ไฟล์ .${extension})` : "(มากกว่า 1 MB)"}\n\nระบบและ Gemini AI ได้วิเคราะห์โครงสร้างไฟล์เรียบร้อยแล้ว เพื่อความเร็วสูงสุดและไม่กินทรัพยากรเครื่อง กรุณาใส่ "ลิงก์ดาวน์โหลดตรง (Google Drive / Mediafire / Mega)" ในช่องข้อมูลด้านล่าง`,
+            "แพ็กเกจขนาดใหญ่ (แนะนำใช้ลิงก์ตรง)"
+          );
         }
       }
 
@@ -781,7 +697,6 @@ export default function AdminDashboardPage() {
           scriptContent: scriptContent,
           revertScript: d.revertScript || prev.revertScript,
           imageUrl: prev.imageUrl || "",
-          downloadUrl: r2DownloadIdentifier || prev.downloadUrl,
         }));
 
         if (analyzeData.isGemini) {
@@ -805,7 +720,6 @@ export default function AdminDashboardPage() {
           fileSize: formattedSize,
           includedFiles: uploadedIncludedFiles.length > 0 ? uploadedIncludedFiles : prev.includedFiles,
           scriptContent: scriptContent,
-          downloadUrl: r2DownloadIdentifier || prev.downloadUrl,
         }));
         setMessage(`โหลดไฟล์ "${file.name}" เข้าสู่ระบบเรียบร้อย`);
         setTimeout(() => setMessage(""), 4000);
@@ -899,13 +813,9 @@ export default function AdminDashboardPage() {
       const method = isEdit ? "PUT" : "POST";
 
       const payload = { ...formData };
-      const hasDirectOrR2 =
-        payload.downloadUrl &&
-        (payload.downloadUrl.trim().startsWith("http") || payload.downloadUrl.trim().startsWith("r2://"));
-
-      if (hasDirectOrR2) {
+      if (payload.downloadUrl && payload.downloadUrl.trim().startsWith("http")) {
         if (!payload.scriptContent || payload.scriptContent.trim() === "") {
-          payload.scriptContent = `@echo off\ntitle ${payload.name}\necho [POKKY STOZY] แพ็กเกจนี้ดาวน์โหลดผ่านระบบคลาวด์จัดเก็บไฟล์\npause`;
+          payload.scriptContent = `@echo off\ntitle ${payload.name}\necho [POKKY STOZY] แพ็กเกจนี้ดาวน์โหลดผ่านลิงก์ตรงภายนอก\npause`;
         }
         if (!payload.revertScript || payload.revertScript.trim() === "") {
           payload.revertScript = `@echo off\ntitle Revert - ${payload.name}\necho คืนค่าเดิมของระบบเรียบร้อย\npause`;
@@ -1085,25 +995,6 @@ export default function AdminDashboardPage() {
                 isDiscordConfigured ? "bg-[#5865F2]/25 text-indigo-200" : "bg-amber-400/20 text-amber-300"
               }`}>
                 {isDiscordConfigured ? "เชื่อมต่อแล้ว" : "ต้องตั้งค่า"}
-              </span>
-            </button>
-
-            {/* Cloudflare R2 Storage Settings Button */}
-            <button
-              type="button"
-              onClick={() => setIsR2ModalOpen(true)}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${
-                isR2Configured
-                  ? "bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25 hover:border-amber-500/60 shadow-sm shadow-amber-500/15"
-                  : "bg-orange-500/10 text-orange-300 border-orange-500/30 hover:bg-orange-500/20 hover:border-orange-500/50"
-              }`}
-            >
-              <Cloud className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>Cloudflare R2</span>
-              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full font-bold ${
-                isR2Configured ? "bg-amber-400/20 text-amber-300" : "bg-orange-400/20 text-orange-300"
-              }`}>
-                {isR2Configured ? "เชื่อมต่อแล้ว (10GB ฟรี)" : "ตั้งค่า R2"}
               </span>
             </button>
 
@@ -1695,24 +1586,14 @@ export default function AdminDashboardPage() {
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileUpload}
-                  accept=".bat,.cmd,.reg,.ps1,.zip,.rar,.7z,.exe,.msi,.txt"
+                  accept=".bat,.cmd,.reg,.ps1,.zip,.txt"
                   className="hidden"
                 />
 
-                {/* AI & Storage Badges */}
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/15 border border-green-500/30 text-xs font-mono text-green-300">
-                    <Sparkles className="w-3.5 h-3.5 text-green-400" />
-                    <span>AI Auto-Pilot: {geminiApiKey ? "Google Gemini AI" : "Built-in Parser"}</span>
-                  </div>
-                  <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono border ${
-                    isR2Configured
-                      ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-300"
-                      : "bg-white/5 border-white/10 text-slate-400"
-                  }`}>
-                    <Cloud className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>R2 Storage: {isR2Configured ? "เปิดใช้งาน (ตรงเข้าคลาวด์)" : "ยังไม่เชื่อมต่อ"}</span>
-                  </div>
+                {/* AI Badge */}
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/15 border border-green-500/30 text-xs font-mono text-green-300">
+                  <Sparkles className="w-3.5 h-3.5 text-green-400" />
+                  <span>AI Auto-Pilot: {geminiApiKey ? "Google Gemini AI" : "Built-in Parser"}</span>
                 </div>
 
                 <div className="w-14 h-14 rounded-2xl bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto text-green-400">
@@ -1723,34 +1604,17 @@ export default function AdminDashboardPage() {
                   )}
                 </div>
 
-                {uploadProgress.isUploading && (
-                  <div className="w-full max-w-md mx-auto space-y-2 pt-2">
-                    <div className="flex items-center justify-between text-xs font-mono">
-                      <span className="text-cyan-400 truncate pr-2">กำลังอัปโหลดไปยัง Cloudflare R2: {uploadProgress.filename}</span>
-                      <span className="text-white font-bold shrink-0">{uploadProgress.progress}%</span>
-                    </div>
-                    <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-cyan-500 to-green-500 rounded-full transition-all duration-150"
-                        style={{ width: `${uploadProgress.progress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
                 <div>
                   <h4 className="text-base font-bold text-white">
                     {isDragging
-                      ? "ปล่อยไฟล์ที่นี่เพื่อให้ AI วิเคราะห์และจัดเก็บข้อมูลทันที"
+                      ? "ปล่อยไฟล์ที่นี่เพื่อให้ AI วิเคราะห์และกรอกข้อมูลทันที"
                       : isAnalyzing
                       ? aiStatusMessage || "AI กำลังวิเคราะห์โค้ดสคริปต์..."
-                      : "ลากไฟล์สคริปต์หรือแพ็กเกจมาวางที่นี่ (.bat, .reg, .zip, .rar, .exe)"}
+                      : "ลากไฟล์สคริปต์มาวางที่นี่ (.bat, .cmd, .reg, .ps1, .zip)"}
                   </h4>
                   <p className="text-xs text-slate-400 mt-1 max-w-lg mx-auto">
                     {isAnalyzing
                       ? "ระบบกำลังสร้างชื่อ, คำโปรย, คำอธิบาย, หมวดหมู่ และ Revert Script ให้อัตโนมัติ"
-                      : isR2Configured
-                      ? "เมื่อวางไฟล์ ระบบจะอัปโหลดตรงเข้า Cloudflare R2 พร้อมให้ AI กรอกข้อมูลและตรวจสคริปต์ให้ครบในคลิกเดียว"
                       : "แค่ลากไฟล์ลงไป ระบบ AI จะอ่านโค้ดและเติมข้อมูลลงฟอร์มทุกช่องให้อัตโนมัติใน 1 วินาที"}
                   </p>
                 </div>
@@ -2079,54 +1943,24 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              {/* Direct Download Link / Cloudflare R2 */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3">
+              {/* Direct Download Link (Optional / Recommended for large files) */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <label className="text-xs font-mono text-slate-300 font-semibold flex items-center gap-2">
-                    {formData.downloadUrl?.trim().startsWith("r2://") ? (
-                      <Cloud className="w-3.5 h-3.5 text-cyan-400" />
-                    ) : (
-                      <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
-                    )}
-                    <span>ปลายทางไฟล์ดาวน์โหลด (Cloudflare R2 หรือ ลิงก์ตรงภายนอก)</span>
+                    <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>ลิงก์ดาวน์โหลดตรงภายนอก (Google Drive / Mediafire / Mega / GitHub)</span>
                   </label>
-                  <span className="text-[11px] font-mono text-cyan-400">
-                    {formData.downloadUrl?.trim().startsWith("r2://")
-                      ? "จัดเก็บบน Cloudflare R2 (ป้องกันสิทธิ์ Discord)"
-                      : "ตัวเลือกสำหรับไฟล์ขนาดใหญ่"}
-                  </span>
+                  <span className="text-[11px] font-mono text-cyan-400">ตัวเลือกเพิ่มเติมสำหรับไฟล์ขนาดใหญ่ {">"} 4 MB</span>
                 </div>
-
-                {formData.downloadUrl?.trim().startsWith("r2://") ? (
-                  <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 text-cyan-300 font-mono text-xs truncate">
-                      <Cloud className="w-4 h-4 text-cyan-400 shrink-0" />
-                      <span className="font-semibold text-white">R2 Object:</span>
-                      <span className="truncate">{formData.downloadUrl}</span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, downloadUrl: "" })}
-                        className="px-2.5 py-1 rounded-lg bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-[11px] font-mono text-red-300 transition-colors cursor-pointer"
-                      >
-                        นำออก / ใส่ลิงก์อื่น
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <input
-                    type="text"
-                    value={formData.downloadUrl}
-                    onChange={(e) => setFormData({ ...formData, downloadUrl: e.target.value })}
-                    placeholder="https://drive.google.com/file/d/... หรือ r2://pokky-packages/packages/..."
-                    className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-green-400 transition-colors"
-                  />
-                )}
+                <input
+                  type="url"
+                  value={formData.downloadUrl}
+                  onChange={(e) => setFormData({ ...formData, downloadUrl: e.target.value })}
+                  placeholder="https://drive.google.com/file/d/.../view หรือ https://www.mediafire.com/... หรือ https://mega.nz/..."
+                  className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-green-400 transition-colors"
+                />
                 <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
-                  {formData.downloadUrl?.trim().startsWith("r2://")
-                    ? "ไฟล์นี้ถูกจัดเก็บบน Cloudflare R2 เรียบร้อยแล้ว เมื่อผู้ใช้ที่ล็อกอิน Discord กดดาวน์โหลด ระบบจะตรวจสอบสิทธิ์และสร้าง Signed URL ชั่วคราวให้ทันที ปลอดภัยและโหลดเร็ว 0 บาท"
-                    : "หากใส่ลิงก์ภายนอก (Google Drive / Mega) หรือลิงก์ R2 เมื่อผู้ใช้กดดาวน์โหลดบนหน้าเว็บ ระบบจะส่งต่อไฟล์ความเร็วสูงให้ทันที"}
+                  หากใส่ลิงก์นี้ เมื่อผู้ใช้กดดาวน์โหลดบนหน้าเว็บ ระบบจะเปิดลิงก์ดาวน์โหลดตรงความเร็วสูงนี้ให้ทันที ช่วยให้รองรับไฟล์ขนาดใหญ่ได้ไม่จำกัดและไม่ติดข้อจำกัดของระบบ
                 </p>
               </div>
 
@@ -2165,8 +1999,8 @@ export default function AdminDashboardPage() {
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                     <label className="text-xs font-mono text-slate-300 font-semibold flex items-center gap-2">
-                      <span>Source Code สคริปต์หลัก (.BAT / CMD Code) {(formData.downloadUrl?.trim().startsWith("http") || formData.downloadUrl?.trim().startsWith("r2://")) ? "(ไม่บังคับ เมื่อมีลิงก์คลาวด์)" : "*"}</span>
-                      <span className="text-[11px] text-green-400">{(formData.downloadUrl?.trim().startsWith("http") || formData.downloadUrl?.trim().startsWith("r2://")) ? "ผู้ใช้จะโหลดไฟล์จากระบบคลาวด์" : "ไฟล์นี้จะถูกส่งให้ผู้ใช้ดาวน์โหลด"}</span>
+                      <span>Source Code สคริปต์หลัก (.BAT / CMD Code) {formData.downloadUrl?.trim().startsWith("http") ? "(ไม่บังคับ เมื่อมีลิงก์ตรง)" : "*"}</span>
+                      <span className="text-[11px] text-green-400">{formData.downloadUrl?.trim().startsWith("http") ? "ผู้ใช้จะโหลดไฟล์จากลิงก์ตรงภายนอก" : "ไฟล์นี้จะถูกส่งให้ผู้ใช้ดาวน์โหลด"}</span>
                     </label>
                     <button
                       type="button"
@@ -2189,7 +2023,7 @@ export default function AdminDashboardPage() {
                   </div>
                   <textarea
                     rows={8}
-                    required={!formData.downloadUrl || (!formData.downloadUrl.trim().startsWith("http") && !formData.downloadUrl.trim().startsWith("r2://"))}
+                    required={!formData.downloadUrl || !formData.downloadUrl.trim().startsWith("http")}
                     value={formData.scriptContent}
                     onChange={(e) => setFormData({ ...formData, scriptContent: e.target.value })}
                     className="w-full p-4 rounded-xl bg-black/60 border border-white/10 text-green-400 font-mono text-xs leading-relaxed focus:outline-none focus:border-green-400"
@@ -2200,12 +2034,12 @@ export default function AdminDashboardPage() {
               {/* Code Editor for Revert Script */}
               <div>
                 <label className="block text-xs font-mono text-slate-300 font-semibold mb-2 flex items-center justify-between">
-                  <span>Source Code สคริปต์กู้คืน (REVERT Script Code) {(formData.downloadUrl?.trim().startsWith("http") || formData.downloadUrl?.trim().startsWith("r2://")) ? "(ไม่บังคับ เมื่อมีลิงก์คลาวด์)" : "*"}</span>
-                  <span className="text-[11px] text-amber-400">{(formData.downloadUrl?.trim().startsWith("http") || formData.downloadUrl?.trim().startsWith("r2://")) ? "ไม่จำเป็นเมื่อเป็นแพ็กเกจคลาวด์" : "สำหรับให้ผู้ใช้คืนค่าเดิมของระบบ"}</span>
+                  <span>Source Code สคริปต์กู้คืน (REVERT Script Code) {formData.downloadUrl?.trim().startsWith("http") ? "(ไม่บังคับ เมื่อมีลิงก์ตรง)" : "*"}</span>
+                  <span className="text-[11px] text-amber-400">{formData.downloadUrl?.trim().startsWith("http") ? "ไม่จำเป็นเมื่อเป็นแพ็กเกจลิงก์ภายนอก" : "สำหรับให้ผู้ใช้คืนค่าเดิมของระบบ"}</span>
                 </label>
                 <textarea
                   rows={6}
-                  required={!formData.downloadUrl || (!formData.downloadUrl.trim().startsWith("http") && !formData.downloadUrl.trim().startsWith("r2://"))}
+                  required={!formData.downloadUrl || !formData.downloadUrl.trim().startsWith("http")}
                   value={formData.revertScript}
                   onChange={(e) => setFormData({ ...formData, revertScript: e.target.value })}
                   className="w-full p-4 rounded-xl bg-black/60 border border-white/10 text-amber-400 font-mono text-xs leading-relaxed focus:outline-none focus:border-amber-400"
@@ -2693,18 +2527,6 @@ export default function AdminDashboardPage() {
         }}
         isDiscordConfigured={isDiscordConfigured}
         isAdmin={true}
-      />
-
-      {/* Cloudflare R2 Storage Settings Modal in Admin */}
-      <R2StorageModal
-        isOpen={isR2ModalOpen}
-        onClose={() => {
-          setIsR2ModalOpen(false);
-          checkR2Status();
-        }}
-        onConfigUpdated={() => {
-          checkR2Status();
-        }}
       />
 
     </div>
