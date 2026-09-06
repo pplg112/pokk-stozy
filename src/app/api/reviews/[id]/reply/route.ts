@@ -72,6 +72,12 @@ export async function POST(
 
     // Check if user is logged in via Discord session
     const loggedInUser = await getAuthenticatedUser(request);
+    if (loggedInUser?.role === "banned") {
+      return NextResponse.json(
+        { success: false, error: "บัญชีของคุณถูกระงับการใช้งาน ไม่สามารถตอบกลับความคิดเห็นได้" },
+        { status: 403 }
+      );
+    }
 
     let authorName = loggedInUser?.globalName || loggedInUser?.username || (body.authorName || "").trim() || "สมาชิก Pokky";
     let authorAvatar = loggedInUser?.avatarUrl || body.authorAvatar || undefined;

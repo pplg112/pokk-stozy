@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import JSZip from "jszip";
 import { RealProduct } from "@/data/realProducts";
+import { AppUser } from "@/types";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { DiscordAuthModal } from "@/components/DiscordAuthModal";
 import { 
@@ -23,7 +24,15 @@ import {
   AlertTriangle,
   X,
   Loader2,
-  Key
+  Key,
+  Users,
+  Shield,
+  Ban,
+  UserCheck,
+  Search,
+  RefreshCw,
+  Copy,
+  Check
 } from "lucide-react";
 export default function AdminDashboardPage() {
   const [products, setProducts] = useState<RealProduct[]>([]);
@@ -151,8 +160,132 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Discord Users Management State
+  const [activeAdminTab, setActiveAdminTab] = useState<"products" | "users">("products");
+  const [discordUsers, setDiscordUsers] = useState<AppUser[]>([]);
+  const [userStats, setUserStats] = useState({
+    totalUsers: 0,
+    adminCount: 0,
+    bannedCount: 0,
+    userCount: 0,
+    activeToday: 0,
+  });
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
+  const [userActionLoading, setUserActionLoading] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [roleModal, setRoleModal] = useState<{
+    isOpen: boolean;
+    user: AppUser | null;
+    targetRole: "user" | "admin" | "banned";
+    isUpdating: boolean;
+  }>({
+    isOpen: false,
+    user: null,
+    targetRole: "user",
+    isUpdating: false,
+  });
+  const [deleteUserModal, setDeleteUserModal] = useState<{
+    isOpen: boolean;
+    user: AppUser | null;
+    isDeleting: boolean;
+  }>({
+    isOpen: false,
+    user: null,
+    isDeleting: false,
+  });
+
+  const loadDiscordUsers = async (searchQuery = "") => {
+    try {
+      setUsersLoading(true);
+      const url = searchQuery 
+        ? `/api/admin/users?q=${encodeURIComponent(searchQuery)}`
+        : "/api/admin/users";
+      const res = await fetch(url, {
+        cache: "no-store",
+        credentials: "include",
+        headers: getAuthHeaders(),
+      });
+      if (res.status === 401) {
+        window.location.href = "/admin/login";
+        return;
+      }
+      const data = await res.json();
+      if (data.success) {
+        setDiscordUsers(data.users || []);
+        if (data.stats) {
+          setUserStats(data.stats);
+        }
+      }
+    } catch {
+      console.error("Failed to load users");
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const handleCopyDiscordId = (id: string) => {
+    navigator.clipboard.writeText(id);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleConfirmRoleChange = async () => {
+    if (!roleModal.user) return;
+    try {
+      setRoleModal((prev) => ({ ...prev, isUpdating: true }));
+      setUserActionLoading(roleModal.user.id);
+      const res = await fetch(`/api/admin/users/${roleModal.user.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ role: roleModal.targetRole }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage(data.message || "อัปเดตสิทธิ์เรียบร้อยแล้ว");
+        setTimeout(() => setMessage(""), 4000);
+        await loadDiscordUsers(userSearch);
+      } else {
+        showAlert(data.error || "เกิดข้อผิดพลาดในการอัปเดตสิทธิ์", "ข้อผิดพลาด");
+      }
+    } catch {
+      showAlert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้", "ข้อผิดพลาด");
+    } finally {
+      setUserActionLoading(null);
+      setRoleModal({ isOpen: false, user: null, targetRole: "user", isUpdating: false });
+    }
+  };
+
+  const handleConfirmDeleteUser = async () => {
+    if (!deleteUserModal.user) return;
+    try {
+      setDeleteUserModal((prev) => ({ ...prev, isDeleting: true }));
+      setUserActionLoading(deleteUserModal.user.id);
+      const res = await fetch(`/api/admin/users/${deleteUserModal.user.id}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage("ลบผู้ใช้เรียบร้อยแล้ว");
+        setTimeout(() => setMessage(""), 4000);
+        await loadDiscordUsers(userSearch);
+      } else {
+        showAlert(data.error || "เกิดข้อผิดพลาดในการลบผู้ใช้", "ข้อผิดพลาด");
+      }
+    } catch {
+      showAlert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้", "ข้อผิดพลาด");
+    } finally {
+      setUserActionLoading(null);
+      setDeleteUserModal({ isOpen: false, user: null, isDeleting: false });
+    }
+  };
+
   useEffect(() => {
     loadData();
+    loadDiscordUsers();
     checkDiscordStatus();
     const savedKey = typeof window !== "undefined" ? localStorage.getItem("pokky_gemini_api_key") || "" : "";
     setGeminiApiKey(savedKey);
@@ -763,162 +896,508 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <div className="p-6 rounded-2xl bg-[#0e1017] border border-white/10">
-            <div className="flex items-center justify-between gap-2 text-slate-400 mb-2">
-              <span className="text-xs font-mono font-semibold uppercase">ยอดดาวน์โหลดรวมทั้งหมด</span>
-              <Download className="w-4 h-4 text-green-400" />
-            </div>
-            <div className="text-3xl font-black font-mono text-white">
-              {stats.totalDownloads.toLocaleString()} <span className="text-sm font-normal text-slate-400">ครั้ง</span>
-            </div>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-[#0e1017] border border-white/10">
-            <div className="flex items-center justify-between gap-2 text-slate-400 mb-2">
-              <span className="text-xs font-mono font-semibold uppercase">จำนวนแพ็กเกจในระบบ</span>
-              <Layers className="w-4 h-4 text-cyan-400" />
-            </div>
-            <div className="text-3xl font-black font-mono text-white">
-              {stats.totalProducts} <span className="text-sm font-normal text-slate-400">ชุด</span>
-            </div>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-[#0e1017] border border-white/10">
-            <div className="flex items-center justify-between gap-2 text-slate-400 mb-2">
-              <span className="text-xs font-mono font-semibold uppercase">กำลังเปิดแจกฟรี</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div className="text-3xl font-black font-mono text-white">
-              {stats.activeProducts} <span className="text-sm font-normal text-slate-400">ชุด</span>
-            </div>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-[#0e1017] border border-white/10">
-            <div className="flex items-center justify-between gap-2 text-slate-400 mb-2">
-              <span className="text-xs font-mono font-semibold uppercase">Google AdSense</span>
-              <Sparkles className="w-4 h-4 text-amber-400" />
-            </div>
-            <div className="text-sm font-mono text-green-400 font-bold truncate">
-              pub-1057391684109886
-            </div>
-            <div className="text-xs text-slate-500 font-mono mt-1">Slot: 9659834867</div>
-          </div>
-        </div>
-
-        {/* Section Header & Create Button */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white">
-              รายการแพ็กเกจสคริปต์ปรับแต่ง (Optimization Packages)
-            </h2>
-            <p className="text-sm text-slate-400">
-              จัดการไฟล์ที่เปิดให้ผู้ใช้ดาวน์โหลด อัปเดต Source Code และดูสถิติ
-            </p>
-          </div>
+        {/* Main Navigation Tabs */}
+        <div className="flex flex-wrap items-center gap-3 border-b border-white/10 pb-4">
+          <button
+            type="button"
+            onClick={() => setActiveAdminTab("products")}
+            className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl font-mono text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activeAdminTab === "products"
+                ? "bg-green-500/20 text-green-400 border border-green-500/40 shadow-lg shadow-green-500/10"
+                : "bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-white/10"
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>จัดการแพ็กเกจสคริปต์</span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-mono font-bold ${
+              activeAdminTab === "products" ? "bg-green-400/25 text-green-300" : "bg-white/10 text-slate-400"
+            }`}>
+              {products.length}
+            </span>
+          </button>
 
           <button
-            onClick={handleOpenCreateModal}
-            className="py-3 px-6 rounded-xl font-bold font-mono text-sm text-slate-950 bg-green-400 hover:bg-green-300 transition-all flex items-center justify-center gap-2 shadow-lg shadow-green-500/25 cursor-pointer"
+            type="button"
+            onClick={() => {
+              setActiveAdminTab("users");
+              loadDiscordUsers(userSearch);
+            }}
+            className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl font-mono text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activeAdminTab === "users"
+                ? "bg-[#5865F2]/20 text-indigo-300 border border-[#5865F2]/40 shadow-lg shadow-[#5865F2]/10"
+                : "bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-white/10"
+            }`}
           >
-            <Plus className="w-5 h-5" />
-            <span>เพิ่มแพ็กเกจสคริปต์ใหม่</span>
+            <Users className="w-4 h-4 text-[#5865F2]" />
+            <span>จัดการผู้ใช้ Discord</span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-mono font-bold ${
+              activeAdminTab === "users" ? "bg-[#5865F2]/25 text-indigo-200" : "bg-white/10 text-slate-400"
+            }`}>
+              {userStats.totalUsers || discordUsers.length}
+            </span>
           </button>
         </div>
 
-        {/* Product Table / Cards */}
-        <div className="rounded-2xl border border-white/10 bg-[#0e1017] overflow-hidden shadow-xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm font-sans">
-              <thead className="border-b border-white/10 bg-white/[0.02] text-xs font-mono uppercase text-slate-400">
-                <tr>
-                  <th className="px-6 py-4">ชื่อแพ็กเกจ / ไฟล์</th>
-                  <th className="px-6 py-4">หมวดหมู่</th>
-                  <th className="px-6 py-4">เวอร์ชัน / ขนาด</th>
-                  <th className="px-6 py-4">ยอดดาวน์โหลด</th>
-                  <th className="px-6 py-4">สถานะ</th>
-                  <th className="px-6 py-4 text-right">การจัดการ</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {products.map((prod) => (
-                  <tr key={prod.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-green-500/10 text-green-400 border border-green-500/20 shrink-0">
-                          <FileCode2 className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-white text-base flex items-center gap-2">
-                            <span>{prod.name}</span>
-                            {prod.popular && (
-                              <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-cyan-400/20 text-cyan-400 border border-cyan-400/30">
-                                ยอดนิยม
-                              </span>
-                            )}
+        {/* TAB 1: PRODUCTS MANAGEMENT */}
+        {activeAdminTab === "products" && (
+          <>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className="p-6 rounded-2xl bg-[#0e1017] border border-white/10">
+                <div className="flex items-center justify-between gap-2 text-slate-400 mb-2">
+                  <span className="text-xs font-mono font-semibold uppercase">ยอดดาวน์โหลดรวมทั้งหมด</span>
+                  <Download className="w-4 h-4 text-green-400" />
+                </div>
+                <div className="text-3xl font-black font-mono text-white">
+                  {stats.totalDownloads.toLocaleString()} <span className="text-sm font-normal text-slate-400">ครั้ง</span>
+                </div>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-[#0e1017] border border-white/10">
+                <div className="flex items-center justify-between gap-2 text-slate-400 mb-2">
+                  <span className="text-xs font-mono font-semibold uppercase">จำนวนแพ็กเกจในระบบ</span>
+                  <Layers className="w-4 h-4 text-cyan-400" />
+                </div>
+                <div className="text-3xl font-black font-mono text-white">
+                  {stats.totalProducts} <span className="text-sm font-normal text-slate-400">ชุด</span>
+                </div>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-[#0e1017] border border-white/10">
+                <div className="flex items-center justify-between gap-2 text-slate-400 mb-2">
+                  <span className="text-xs font-mono font-semibold uppercase">กำลังเปิดแจกฟรี</span>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div className="text-3xl font-black font-mono text-white">
+                  {stats.activeProducts} <span className="text-sm font-normal text-slate-400">ชุด</span>
+                </div>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-[#0e1017] border border-white/10">
+                <div className="flex items-center justify-between gap-2 text-slate-400 mb-2">
+                  <span className="text-xs font-mono font-semibold uppercase">Google AdSense</span>
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                </div>
+                <div className="text-sm font-mono text-green-400 font-bold truncate">
+                  pub-1057391684109886
+                </div>
+                <div className="text-xs text-slate-500 font-mono mt-1">Slot: 9659834867</div>
+              </div>
+            </div>
+
+            {/* Section Header & Create Button */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white">
+                  รายการแพ็กเกจสคริปต์ปรับแต่ง (Optimization Packages)
+                </h2>
+                <p className="text-sm text-slate-400">
+                  จัดการไฟล์ที่เปิดให้ผู้ใช้ดาวน์โหลด อัปเดต Source Code และดูสถิติ
+                </p>
+              </div>
+
+              <button
+                onClick={handleOpenCreateModal}
+                className="py-3 px-6 rounded-xl font-bold font-mono text-sm text-slate-950 bg-green-400 hover:bg-green-300 transition-all flex items-center justify-center gap-2 shadow-lg shadow-green-500/25 cursor-pointer"
+              >
+                <Plus className="w-5 h-5" />
+                <span>เพิ่มแพ็กเกจสคริปต์ใหม่</span>
+              </button>
+            </div>
+
+            {/* Product Table / Cards */}
+            <div className="rounded-2xl border border-white/10 bg-[#0e1017] overflow-hidden shadow-xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm font-sans">
+                  <thead className="border-b border-white/10 bg-white/[0.02] text-xs font-mono uppercase text-slate-400">
+                    <tr>
+                      <th className="px-6 py-4">ชื่อแพ็กเกจ / ไฟล์</th>
+                      <th className="px-6 py-4">หมวดหมู่</th>
+                      <th className="px-6 py-4">เวอร์ชัน / ขนาด</th>
+                      <th className="px-6 py-4">ยอดดาวน์โหลด</th>
+                      <th className="px-6 py-4">สถานะ</th>
+                      <th className="px-6 py-4 text-right">การจัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {products.map((prod) => (
+                      <tr key={prod.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-green-500/10 text-green-400 border border-green-500/20 shrink-0">
+                              <FileCode2 className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <div className="font-bold text-white text-base flex items-center gap-2">
+                                <span>{prod.name}</span>
+                                {prod.popular && (
+                                  <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-cyan-400/20 text-cyan-400 border border-cyan-400/30">
+                                    ยอดนิยม
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-400 line-clamp-1 mt-0.5">{prod.tagline}</p>
+                            </div>
                           </div>
-                          <p className="text-xs text-slate-400 line-clamp-1 mt-0.5">{prod.tagline}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 font-mono text-xs text-slate-300">
-                      <span className="px-2.5 py-1 rounded bg-white/5 border border-white/10">
-                        {prod.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-mono text-xs text-slate-300">
-                      <div>{prod.version}</div>
-                      <div className="text-slate-500">{prod.fileFormat} • {prod.fileSize}</div>
-                    </td>
-                    <td className="px-6 py-4 font-mono text-sm font-bold text-green-400">
-                      {prod.downloadsCount.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <button
-                        onClick={() => handleToggleActive(prod)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold transition-colors cursor-pointer ${
-                          prod.active
-                            ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                            : "bg-slate-500/20 text-slate-400 border border-slate-500/30"
-                        }`}
-                      >
-                        {prod.active ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                        <span>{prod.active ? "เปิดแจกฟรี" : "ซ่อนไว้"}</span>
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <a
-                          href={`/api/download/${prod.id}`}
-                          download
-                          title="ทดสอบดาวน์โหลดไฟล์จริง"
-                          className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
-                        >
-                          <Download className="w-4 h-4" />
-                        </a>
-                        <button
-                          onClick={() => handleOpenEditModal(prod)}
-                          title="แก้ไขข้อมูลและสคริปต์"
-                          className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => promptDeleteProduct(prod.id, prod.name)}
-                          title="ลบแพ็กเกจนี้"
-                          className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        </td>
+                        <td className="px-6 py-4 font-mono text-xs text-slate-300">
+                          <span className="px-2.5 py-1 rounded bg-white/5 border border-white/10">
+                            {prod.category}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 font-mono text-xs text-slate-300">
+                          <div>{prod.version}</div>
+                          <div className="text-slate-500">{prod.fileFormat} • {prod.fileSize}</div>
+                        </td>
+                        <td className="px-6 py-4 font-mono text-sm font-bold text-green-400">
+                          {prod.downloadsCount.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => handleToggleActive(prod)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold transition-colors cursor-pointer ${
+                              prod.active
+                                ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                : "bg-slate-500/20 text-slate-400 border border-slate-500/30"
+                            }`}
+                          >
+                            {prod.active ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                            <span>{prod.active ? "เปิดแจกฟรี" : "ซ่อนไว้"}</span>
+                          </button>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <a
+                              href={`/api/download/${prod.id}`}
+                              download
+                              title="ทดสอบดาวน์โหลดไฟล์จริง"
+                              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
+                            >
+                              <Download className="w-4 h-4" />
+                            </a>
+                            <button
+                              onClick={() => handleOpenEditModal(prod)}
+                              title="แก้ไขข้อมูลและสคริปต์"
+                              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => promptDeleteProduct(prod.id, prod.name)}
+                              title="ลบแพ็กเกจนี้"
+                              className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* TAB 2: DISCORD USERS MANAGEMENT */}
+        {activeAdminTab === "users" && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* User Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className="p-6 rounded-2xl bg-[#0e1017] border border-white/10">
+                <div className="flex items-center justify-between gap-2 text-slate-400 mb-2">
+                  <span className="text-xs font-mono font-semibold uppercase">ผู้ใช้ Discord ทั้งหมด</span>
+                  <Users className="w-4 h-4 text-[#5865F2]" />
+                </div>
+                <div className="text-3xl font-black font-mono text-white">
+                  {(userStats.totalUsers || discordUsers.length).toLocaleString()} <span className="text-sm font-normal text-slate-400">คน</span>
+                </div>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-[#0e1017] border border-white/10">
+                <div className="flex items-center justify-between gap-2 text-slate-400 mb-2">
+                  <span className="text-xs font-mono font-semibold uppercase">แอดมิน (Admin)</span>
+                  <Shield className="w-4 h-4 text-indigo-400" />
+                </div>
+                <div className="text-3xl font-black font-mono text-indigo-300">
+                  {userStats.adminCount} <span className="text-sm font-normal text-slate-400">คน</span>
+                </div>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-[#0e1017] border border-white/10">
+                <div className="flex items-center justify-between gap-2 text-slate-400 mb-2">
+                  <span className="text-xs font-mono font-semibold uppercase">ผู้ใช้ทั่วไป (Standard)</span>
+                  <UserCheck className="w-4 h-4 text-green-400" />
+                </div>
+                <div className="text-3xl font-black font-mono text-green-400">
+                  {userStats.userCount} <span className="text-sm font-normal text-slate-400">คน</span>
+                </div>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-[#0e1017] border border-white/10">
+                <div className="flex items-center justify-between gap-2 text-slate-400 mb-2">
+                  <span className="text-xs font-mono font-semibold uppercase">บัญชีที่ถูกระงับ (Banned)</span>
+                  <Ban className="w-4 h-4 text-rose-400" />
+                </div>
+                <div className="text-3xl font-black font-mono text-rose-400">
+                  {userStats.bannedCount} <span className="text-sm font-normal text-slate-400">คน</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Header & Search Bar */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+                  <span>รายชื่อสมาชิกที่ล็อกอินผ่าน Discord</span>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-[#5865F2]/20 text-indigo-300 border border-[#5865F2]/35 font-bold">
+                    OAuth2 Real Profiles
+                  </span>
+                </h2>
+                <p className="text-sm text-slate-400 mt-0.5">
+                  จัดการสิทธิ์สมาชิก ตรวจสอบ Discord ID และระงับผู้ใช้งานที่ไม่เหมาะสม
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <div className="relative flex-1 sm:w-72">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={userSearch}
+                    onChange={(e) => {
+                      setUserSearch(e.target.value);
+                      loadDiscordUsers(e.target.value);
+                    }}
+                    placeholder="ค้นหาชื่อ, @username, หรือ ID..."
+                    className="w-full bg-[#0e1017] border border-white/15 focus:border-[#5865F2] rounded-xl pl-9 pr-8 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition-colors"
+                  />
+                  {userSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserSearch("");
+                        loadDiscordUsers("");
+                      }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs cursor-pointer p-1"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => loadDiscordUsers(userSearch)}
+                  disabled={usersLoading}
+                  className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 transition-colors cursor-pointer shrink-0"
+                  title="รีเฟรชข้อมูล"
+                >
+                  <RefreshCw className={`w-4 h-4 ${usersLoading ? "animate-spin text-[#5865F2]" : ""}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Users Table */}
+            <div className="rounded-2xl border border-white/10 bg-[#0e1017] overflow-hidden shadow-xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm font-sans">
+                  <thead className="border-b border-white/10 bg-white/[0.02] text-xs font-mono uppercase text-slate-400">
+                    <tr>
+                      <th className="px-6 py-4">โปรไฟล์ Discord</th>
+                      <th className="px-6 py-4">Discord Snowflake ID</th>
+                      <th className="px-6 py-4">อีเมล</th>
+                      <th className="px-6 py-4">สิทธิ์ / สถานะ</th>
+                      <th className="px-6 py-4">เข้าสู่ระบบล่าสุด</th>
+                      <th className="px-6 py-4 text-right">การจัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {usersLoading ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                          <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#5865F2] mb-2" />
+                          <span className="text-xs font-mono">กำลังโหลดข้อมูลผู้ใช้...</span>
+                        </td>
+                      </tr>
+                    ) : discordUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                          <Users className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                          <p className="text-sm text-slate-300">ไม่พบข้อมูลผู้ใช้ที่ตรงกับเงื่อนไข</p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {userSearch ? "ลองค้นหาด้วยคำอื่น หรือกดล้างคำค้นหา" : "ยังไม่มีผู้ใช้เข้าสู่ระบบผ่าน Discord ในระบบ"}
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      discordUsers.map((user) => {
+                        const isUserBanned = user.role === "banned";
+                        const isUserAdmin = user.role === "admin";
+                        const isBusy = userActionLoading === user.id;
+
+                        return (
+                          <tr key={user.id} className="hover:bg-white/[0.02] transition-colors">
+                            {/* Profile (Avatar + Name) */}
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                {user.avatarUrl ? (
+                                  <img
+                                    src={user.avatarUrl}
+                                    alt={user.username}
+                                    className="w-10 h-10 rounded-full border border-white/10 object-cover shadow-sm"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-[#5865F2]/20 border border-[#5865F2]/40 flex items-center justify-center text-[#5865F2] font-bold text-xs">
+                                    {user.username.slice(0, 2).toUpperCase()}
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="font-bold text-white text-sm flex items-center gap-1.5">
+                                    <span>{user.globalName || user.username}</span>
+                                    {isUserAdmin && (
+                                      <span className="px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/35 text-[10px] font-mono font-bold">
+                                        ADMIN
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-slate-400 font-mono">
+                                    @{user.username}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Discord ID with 1-click Copy */}
+                            <td className="px-6 py-4 font-mono text-xs text-slate-300">
+                              <button
+                                type="button"
+                                onClick={() => handleCopyDiscordId(user.discordId)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/40 hover:bg-black/70 border border-white/10 text-slate-300 hover:text-white transition-all cursor-pointer group"
+                                title="คลิกเพื่อคัดลอก Discord Snowflake ID"
+                              >
+                                <span>{user.discordId}</span>
+                                {copiedId === user.discordId ? (
+                                  <Check className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                                ) : (
+                                  <Copy className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 shrink-0" />
+                                )}
+                              </button>
+                            </td>
+
+                            {/* Email */}
+                            <td className="px-6 py-4 font-mono text-xs text-slate-400">
+                              {user.email ? (
+                                <span className="text-slate-300">{user.email}</span>
+                              ) : (
+                                <span className="text-slate-600">-</span>
+                              )}
+                            </td>
+
+                            {/* Role / Status Badge */}
+                            <td className="px-6 py-4">
+                              {isUserBanned ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-rose-500/20 text-rose-400 border border-rose-500/35">
+                                  <Ban className="w-3.5 h-3.5" />
+                                  <span>ระงับการใช้งาน</span>
+                                </span>
+                              ) : isUserAdmin ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/35">
+                                  <Shield className="w-3.5 h-3.5" />
+                                  <span>ผู้ดูแลระบบ</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-green-500/20 text-green-400 border border-green-500/35">
+                                  <UserCheck className="w-3.5 h-3.5" />
+                                  <span>ผู้ใช้ทั่วไป</span>
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Last Login & Joined */}
+                            <td className="px-6 py-4 font-mono text-xs text-slate-300">
+                              <div>{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString("th-TH") : "-"}</div>
+                              <div className="text-slate-500 text-[11px]">
+                                สมัคร: {user.createdAt ? new Date(user.createdAt).toLocaleDateString("th-TH") : "-"}
+                              </div>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {/* Toggle Admin Role */}
+                                <button
+                                  type="button"
+                                  disabled={isBusy}
+                                  onClick={() => {
+                                    setRoleModal({
+                                      isOpen: true,
+                                      user,
+                                      targetRole: isUserAdmin ? "user" : "admin",
+                                      isUpdating: false,
+                                    });
+                                  }}
+                                  title={isUserAdmin ? "ลดสิทธิ์เป็นผู้ใช้ทั่วไป" : "แต่งตั้งเป็นผู้ดูแลระบบ (Admin)"}
+                                  className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                                    isUserAdmin
+                                      ? "bg-indigo-500/15 text-indigo-300 hover:bg-indigo-500/25 border border-indigo-500/30"
+                                      : "bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-white/10"
+                                  }`}
+                                >
+                                  <Shield className="w-4 h-4" />
+                                </button>
+
+                                {/* Ban / Unban Button */}
+                                <button
+                                  type="button"
+                                  disabled={isBusy}
+                                  onClick={() => {
+                                    setRoleModal({
+                                      isOpen: true,
+                                      user,
+                                      targetRole: isUserBanned ? "user" : "banned",
+                                      isUpdating: false,
+                                    });
+                                  }}
+                                  title={isUserBanned ? "ปลดการระงับบัญชี" : "ระงับการใช้งานบัญชีนี้ (Ban)"}
+                                  className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                                    isUserBanned
+                                      ? "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border border-rose-500/40"
+                                      : "bg-white/5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-white/10"
+                                  }`}
+                                >
+                                  <Ban className="w-4 h-4" />
+                                </button>
+
+                                {/* Delete User Button */}
+                                <button
+                                  type="button"
+                                  disabled={isBusy}
+                                  onClick={() => {
+                                    setDeleteUserModal({
+                                      isOpen: true,
+                                      user,
+                                      isDeleting: false,
+                                    });
+                                  }}
+                                  title="ลบข้อมูลผู้ใช้นี้ออกจากระบบ"
+                                  className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20 transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
       </main>
 
@@ -1601,6 +2080,163 @@ export default function AdminDashboardPage() {
                   className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-mono font-bold text-slate-950 bg-gradient-to-r from-green-400 to-emerald-400 hover:from-green-300 hover:to-emerald-300 transition-all shadow-md shadow-green-500/20 cursor-pointer"
                 >
                   รับทราบ
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Discord User Role & Status Modal */}
+      {roleModal.isOpen && roleModal.user && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 font-sans">
+          <div className="relative w-full max-w-md rounded-3xl bg-[#0c0e17] border border-white/15 p-6 shadow-2xl text-left overflow-hidden">
+            <div className={`absolute top-0 left-0 right-0 h-1 ${
+              roleModal.targetRole === "banned"
+                ? "bg-gradient-to-r from-red-600 via-rose-500 to-amber-500"
+                : roleModal.targetRole === "admin"
+                ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400"
+                : "bg-gradient-to-r from-green-400 via-emerald-500 to-teal-400"
+            }`} />
+
+            <div className="relative z-10 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${
+                  roleModal.targetRole === "banned"
+                    ? "bg-rose-500/10 border border-rose-500/30 text-rose-400"
+                    : roleModal.targetRole === "admin"
+                    ? "bg-indigo-500/10 border border-indigo-500/30 text-indigo-300"
+                    : "bg-green-500/10 border border-green-500/30 text-green-400"
+                }`}>
+                  {roleModal.targetRole === "banned" ? (
+                    <Ban className="w-5 h-5" />
+                  ) : roleModal.targetRole === "admin" ? (
+                    <Shield className="w-5 h-5" />
+                  ) : (
+                    <UserCheck className="w-5 h-5" />
+                  )}
+                </div>
+                <button
+                  onClick={() => setRoleModal({ isOpen: false, user: null, targetRole: "user", isUpdating: false })}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-white">
+                  {roleModal.targetRole === "banned"
+                    ? "ระงับการใช้งานบัญชีผู้ใช้ (Ban)"
+                    : roleModal.targetRole === "admin"
+                    ? "แต่งตั้งเป็นผู้ดูแลระบบ (Admin)"
+                    : "เปลี่ยนสถานะเป็นผู้ใช้ทั่วไป"}
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">
+                  คุณต้องการเปลี่ยนสิทธิ์ของสมาชิก{" "}
+                  <span className="text-white font-bold font-mono">@{roleModal.user.username}</span>{" "}
+                  ({roleModal.user.globalName || roleModal.user.username}) ใช่หรือไม่?
+                </p>
+                {roleModal.targetRole === "banned" && (
+                  <p className="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl mt-3 leading-relaxed">
+                    เมื่อระงับการใช้งาน ผู้ใช้รายนี้จะไม่สามารถส่งรีวิวหรือตอบกลับความคิดเห็นบนเว็บไซต์ได้
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setRoleModal({ isOpen: false, user: null, targetRole: "user", isUpdating: false })}
+                  className="px-4 py-2 rounded-xl text-xs sm:text-sm font-mono text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmRoleChange}
+                  disabled={roleModal.isUpdating}
+                  className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white transition-all flex items-center gap-2 cursor-pointer shadow-lg active:scale-95 disabled:opacity-50 ${
+                    roleModal.targetRole === "banned"
+                      ? "bg-rose-600 hover:bg-rose-500 shadow-rose-600/30"
+                      : roleModal.targetRole === "admin"
+                      ? "bg-[#5865F2] hover:bg-[#4752C4] shadow-[#5865F2]/30"
+                      : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30"
+                  }`}
+                >
+                  {roleModal.isUpdating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>กำลังบันทึก...</span>
+                    </>
+                  ) : (
+                    <span>ยืนยันการเปลี่ยนแปลง</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Discord User Delete Modal */}
+      {deleteUserModal.isOpen && deleteUserModal.user && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 font-sans">
+          <div className="relative w-full max-w-md rounded-3xl bg-[#0c0e17] border border-red-500/30 p-6 shadow-[0_0_40px_rgba(239,68,68,0.2)] text-left overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-rose-500 to-amber-500" />
+
+            <div className="relative z-10 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="w-11 h-11 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <button
+                  onClick={() => setDeleteUserModal({ isOpen: false, user: null, isDeleting: false })}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-white">
+                  ยืนยันการลบผู้ใช้ Discord
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">
+                  คุณแน่ใจหรือไม่ว่าต้องการลบผู้ใช้{" "}
+                  <span className="text-white font-bold font-mono">@{deleteUserModal.user.username}</span>{" "}
+                  (Discord ID: <span className="font-mono text-slate-400">{deleteUserModal.user.discordId}</span>) ออกจากระบบฐานข้อมูล?
+                </p>
+                <p className="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl mt-3 leading-relaxed">
+                  การกระทำนี้ไม่สามารถย้อนกลับได้ ข้อมูลผู้ใช้จะถูกลบออกจากระบบอย่างถาวร
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setDeleteUserModal({ isOpen: false, user: null, isDeleting: false })}
+                  className="px-4 py-2 rounded-xl text-xs sm:text-sm font-mono text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteUser}
+                  disabled={deleteUserModal.isDeleting}
+                  className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-red-600 hover:bg-red-500 shadow-lg shadow-red-600/30 transition-all flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+                >
+                  {deleteUserModal.isDeleting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>กำลังลบ...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      <span>ลบผู้ใช้ทันที</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

@@ -128,6 +128,12 @@ export async function POST(request: NextRequest) {
 
     // 6. Check Logged-in Discord User & Sanitize Author Name
     const loggedInUser = await getAuthenticatedUser(request);
+    if (loggedInUser?.role === "banned") {
+      return NextResponse.json(
+        { success: false, error: "บัญชีของคุณถูกระงับการใช้งาน ไม่สามารถส่งรีวิวหรือแสดงความคิดเห็นได้" },
+        { status: 403 }
+      );
+    }
     let cleanAuthor = loggedInUser?.globalName || loggedInUser?.username || sanitizeText(authorName || "");
     if (!cleanAuthor || cleanAuthor.length === 0) {
       cleanAuthor = "ผู้ใช้นิรนาม";

@@ -154,18 +154,6 @@ export const AdBanner: React.FC<AdBannerProps> = ({ slot, className = "" }) => {
             </div>
           </div>
         </div>
-
-        {/* Dedicated Google AdSense Unit */}
-        <div className="w-full overflow-hidden mt-3 flex justify-center">
-          <ins
-            className="adsbygoogle"
-            style={{ display: "block", textAlign: "center", width: "100%" }}
-            data-ad-client={ADS_CONFIG.adsense.clientId}
-            data-ad-slot={slotId}
-            data-ad-format="auto"
-            data-full-width-responsive="true"
-          />
-        </div>
       </div>
     );
   }

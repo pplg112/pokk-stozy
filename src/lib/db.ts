@@ -860,7 +860,7 @@ export const db = {
     email?: string;
     avatar?: string;
     avatarUrl?: string;
-    role?: "user" | "admin";
+    role?: "user" | "admin" | "banned";
   }): Promise<AppUser> {
     const now = new Date().toISOString();
     const supabase = getSupabase();
@@ -1034,5 +1034,63 @@ export const db = {
       }
     }
     return ensureUsersFile();
+  },
+
+  async updateUserRole(idOrDiscordId: string, role: "user" | "admin" | "banned"): Promise<boolean> {
+    const supabase = getSupabase();
+    let updatedInSupabase = false;
+
+    if (supabase) {
+      try {
+        const { error } = await supabase
+          .from("users")
+          .update({ role })
+          .or(`id.eq.${idOrDiscordId},discord_id.eq.${idOrDiscordId}`);
+        if (!error) {
+          updatedInSupabase = true;
+        }
+      } catch (e) {
+        console.error("Supabase updateUserRole error:", e);
+      }
+    }
+
+    const users = ensureUsersFile();
+    const idx = users.findIndex((u) => u.id === idOrDiscordId || u.discordId === idOrDiscordId);
+    if (idx >= 0) {
+      users[idx].role = role;
+      persistUsers(users);
+      return true;
+    }
+
+    return updatedInSupabase;
+  },
+
+  async deleteUser(idOrDiscordId: string): Promise<boolean> {
+    const supabase = getSupabase();
+    let deletedInSupabase = false;
+
+    if (supabase) {
+      try {
+        const { error } = await supabase
+          .from("users")
+          .delete()
+          .or(`id.eq.${idOrDiscordId},discord_id.eq.${idOrDiscordId}`);
+        if (!error) {
+          deletedInSupabase = true;
+        }
+      } catch (e) {
+        console.error("Supabase deleteUser error:", e);
+      }
+    }
+
+    const users = ensureUsersFile();
+    const initialLen = users.length;
+    const filtered = users.filter((u) => u.id !== idOrDiscordId && u.discordId !== idOrDiscordId);
+    if (filtered.length !== initialLen) {
+      persistUsers(filtered);
+      return true;
+    }
+
+    return deletedInSupabase;
   }
 };

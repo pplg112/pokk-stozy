@@ -45,7 +45,7 @@ export interface DiscordUser {
   avatar?: string;
   avatarUrl?: string;
   email?: string;
-  role?: "user" | "admin";
+  role?: "user" | "admin" | "banned";
 }
 
 export interface AppUser {
@@ -56,7 +56,7 @@ export interface AppUser {
   email?: string;
   avatar?: string;
   avatarUrl?: string;
-  role: "user" | "admin";
+  role: "user" | "admin" | "banned";
   createdAt: string;
   lastLoginAt: string;
 }
