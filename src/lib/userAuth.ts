@@ -27,8 +27,8 @@ export function getDiscordConfig(): DiscordConfig {
     return cachedConfig;
   }
 
-  let clientId = (process.env.DISCORD_CLIENT_ID || "").trim();
-  let clientSecret = (process.env.DISCORD_CLIENT_SECRET || "").trim();
+  let clientId = (process.env.DISCORD_CLIENT_ID || "1545830613741871114").trim();
+  let clientSecret = (process.env.DISCORD_CLIENT_SECRET || "uG10JskMmwm6cUiAIM2durxBGIc66Qy5").trim();
 
   // 1. Try reading from temporary writable filesystem (/tmp)
   try {

@@ -1616,6 +1616,7 @@ export default function AdminDashboardPage() {
           checkDiscordStatus();
         }}
         isDiscordConfigured={isDiscordConfigured}
+        isAdmin={true}
       />
 
     </div>
