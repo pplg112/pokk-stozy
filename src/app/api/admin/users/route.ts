@@ -13,8 +13,24 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const q = (searchParams.get("q") || "").toLowerCase().trim();
 
-    let users = await db.getAllUsers();
+    const allUsers = await db.getAllUsers();
 
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+
+    const stats = {
+      totalUsers: allUsers.length,
+      adminCount: allUsers.filter((u) => u.role === "admin").length,
+      bannedCount: allUsers.filter((u) => u.role === "banned").length,
+      userCount: allUsers.filter((u) => !u.role || u.role === "user").length,
+      activeToday: allUsers.filter((u) => {
+        if (!u.lastLoginAt) return false;
+        const loginTime = new Date(u.lastLoginAt).getTime();
+        return !isNaN(loginTime) && now - loginTime < oneDayMs;
+      }).length,
+    };
+
+    let users = allUsers;
     if (q) {
       users = users.filter(
         (u) =>
@@ -24,21 +40,6 @@ export async function GET(request: NextRequest) {
           (u.email && u.email.toLowerCase().includes(q))
       );
     }
-
-    const now = Date.now();
-    const oneDayMs = 24 * 60 * 60 * 1000;
-
-    const stats = {
-      totalUsers: users.length,
-      adminCount: users.filter((u) => u.role === "admin").length,
-      bannedCount: users.filter((u) => u.role === "banned").length,
-      userCount: users.filter((u) => !u.role || u.role === "user").length,
-      activeToday: users.filter((u) => {
-        if (!u.lastLoginAt) return false;
-        const loginTime = new Date(u.lastLoginAt).getTime();
-        return !isNaN(loginTime) && now - loginTime < oneDayMs;
-      }).length,
-    };
 
     return NextResponse.json({
       success: true,

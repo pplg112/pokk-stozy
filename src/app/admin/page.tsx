@@ -32,7 +32,8 @@ import {
   Search,
   RefreshCw,
   Copy,
-  Check
+  Check,
+  Zap
 } from "lucide-react";
 export default function AdminDashboardPage() {
   const [products, setProducts] = useState<RealProduct[]>([]);
@@ -119,10 +120,51 @@ export default function AdminDashboardPage() {
     active: true,
     imageUrl: "",
     downloadUrl: "",
+    features: [] as string[],
+    requirements: [] as string[],
     includedFiles: [] as { filename: string; description: string }[],
     scriptContent: `@echo off\ntitle Optimization Script\necho [POKKY STOZY] กำลังเริ่มการปรับแต่ง...\npause`,
     revertScript: `@echo off\ntitle Revert Script\necho [POKKY STOZY] คืนค่าเดิมของระบบ...\npause`,
   });
+
+  const [newFeatureInput, setNewFeatureInput] = useState("");
+  const [newRequirementInput, setNewRequirementInput] = useState("");
+
+  const handleAddFeature = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const val = newFeatureInput.trim();
+    if (!val) return;
+    setFormData((prev) => ({
+      ...prev,
+      features: [...(prev.features || []), val],
+    }));
+    setNewFeatureInput("");
+  };
+
+  const handleRemoveFeature = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      features: (prev.features || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAddRequirement = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const val = newRequirementInput.trim();
+    if (!val) return;
+    setFormData((prev) => ({
+      ...prev,
+      requirements: [...(prev.requirements || []), val],
+    }));
+    setNewRequirementInput("");
+  };
+
+  const handleRemoveRequirement = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      requirements: (prev.requirements || []).filter((_, i) => i !== index),
+    }));
+  };
 
   const getAuthHeaders = (): Record<string, string> => {
     if (typeof window === "undefined") return {};
@@ -365,10 +407,14 @@ export default function AdminDashboardPage() {
       active: true,
       imageUrl: "",
       downloadUrl: "",
+      features: [],
+      requirements: [],
       includedFiles: [],
       scriptContent: `@echo off\ntitle My Optimization Script\necho [POKKY STOZY] กำลังเริ่มการปรับแต่ง...\npause`,
       revertScript: `@echo off\ntitle Revert Script\necho [POKKY STOZY] คืนค่าเดิมของระบบ...\npause`,
     });
+    setNewFeatureInput("");
+    setNewRequirementInput("");
     setIsModalOpen(true);
   };
 
@@ -387,10 +433,14 @@ export default function AdminDashboardPage() {
       active: product.active,
       imageUrl: product.imageUrl || "",
       downloadUrl: product.downloadUrl || "",
+      features: product.features || [],
+      requirements: product.requirements || [],
       includedFiles: product.includedFiles || [],
       scriptContent: product.scriptContent,
       revertScript: product.revertScript,
     });
+    setNewFeatureInput("");
+    setNewRequirementInput("");
     setIsModalOpen(true);
   };
 
@@ -619,6 +669,8 @@ export default function AdminDashboardPage() {
           compatibility: d.compatibility || prev.compatibility,
           fileFormat: fileFormat,
           fileSize: formattedSize,
+          features: Array.isArray(d.features) && d.features.length > 0 ? d.features : prev.features,
+          requirements: Array.isArray(d.requirements) && d.requirements.length > 0 ? d.requirements : prev.requirements,
           includedFiles: uploadedIncludedFiles.length > 0 ? uploadedIncludedFiles : prev.includedFiles,
           scriptContent: scriptContent,
           revertScript: d.revertScript || prev.revertScript,
@@ -703,6 +755,8 @@ export default function AdminDashboardPage() {
           tagline: d.tagline || prev.tagline,
           description: d.description || prev.description,
           compatibility: d.compatibility || prev.compatibility,
+          features: Array.isArray(d.features) && d.features.length > 0 ? d.features : prev.features,
+          requirements: Array.isArray(d.requirements) && d.requirements.length > 0 ? d.requirements : prev.requirements,
           revertScript: d.revertScript || prev.revertScript,
         }));
 
@@ -1659,6 +1713,147 @@ export default function AdminDashboardPage() {
                   placeholder="อธิบายว่าสคริปต์นี้ทำอะไร ช่วยเรื่องอะไรบ้าง..."
                   className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-green-400"
                 />
+              </div>
+
+              {/* Features and Tweaks section (AI Auto-Pilot & Manual Edit) */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3 font-sans">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <label className="text-xs font-mono text-slate-200 font-semibold flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-green-400" />
+                    <span>จุดเด่นและการปรับแต่งที่รวมอยู่ในแพ็กเกจ (Features & Tweaks)</span>
+                  </label>
+                  {formData.features && formData.features.length > 0 && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-green-500/20 text-green-300 border border-green-500/30 flex items-center gap-1 w-fit">
+                      <Sparkles className="w-3 h-3 text-green-400" />
+                      สร้างโดย AI อัตโนมัติ ({formData.features.length} รายการ)
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  รายการเหล่านี้จะแสดงเป็นหัวข้อจุดเด่นในหน้ารายละเอียดแพ็กเกจ (ปรับแต่งได้ตามต้องการ)
+                </p>
+
+                {/* List of Features */}
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {formData.features && formData.features.length > 0 ? (
+                    formData.features.map((feat, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-black/40 border border-white/5 text-xs text-slate-200 group hover:border-green-500/30 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                          <span className="truncate">{feat}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFeature(idx)}
+                          className="p-1 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+                          title="ลบรายการนี้"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-3 rounded-xl bg-black/20 border border-dashed border-white/10 text-center text-xs text-slate-500">
+                      ยังไม่มีรายการจุดเด่น (อัปโหลดไฟล์สคริปต์เพื่อให้ AI วิเคราะห์อัตโนมัติ หรือพิมพ์เพิ่มเองด้านล่าง)
+                    </div>
+                  )}
+                </div>
+
+                {/* Add new feature input */}
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={newFeatureInput}
+                    onChange={(e) => setNewFeatureInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddFeature();
+                      }
+                    }}
+                    placeholder="พิมพ์จุดเด่นใหม่ เช่น ปรับแต่ง GPU Frametime ลดอาการภาพกระตุก..."
+                    className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-white text-xs font-sans focus:outline-none focus:border-green-400 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleAddFeature()}
+                    className="px-3 py-2 rounded-xl bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30 text-xs font-mono font-bold flex items-center gap-1 transition-colors shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>เพิ่ม</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Requirements section */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3 font-sans">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <label className="text-xs font-mono text-slate-200 font-semibold flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-cyan-400" />
+                    <span>ความต้องการของระบบและข้อควรรู้ (Requirements)</span>
+                  </label>
+                  {formData.requirements && formData.requirements.length > 0 && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 w-fit">
+                      {formData.requirements.length} ข้อกำหนด
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {formData.requirements && formData.requirements.length > 0 ? (
+                    formData.requirements.map((req, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-black/40 border border-white/5 text-xs text-slate-200 group hover:border-cyan-500/30 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                          <span className="truncate">{req}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRequirement(idx)}
+                          className="p-1 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+                          title="ลบข้อกำหนดนี้"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-3 rounded-xl bg-black/20 border border-dashed border-white/10 text-center text-xs text-slate-500">
+                      ยังไม่มีข้อกำหนดเพิ่มเติม
+                    </div>
+                  )}
+                </div>
+
+                {/* Add new requirement input */}
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={newRequirementInput}
+                    onChange={(e) => setNewRequirementInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddRequirement();
+                      }
+                    }}
+                    placeholder="เช่น รันด้วยสิทธิ์ Run as Administrator..."
+                    className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-white text-xs font-sans focus:outline-none focus:border-cyan-400 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleAddRequirement()}
+                    className="px-3 py-2 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/30 text-xs font-mono font-bold flex items-center gap-1 transition-colors shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>เพิ่ม</span>
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">

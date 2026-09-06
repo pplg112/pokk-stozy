@@ -257,6 +257,56 @@ function parseProduct(prod: SupabaseProductRow): RealProduct {
 }
 
 const LISTING_COLUMNS = "id, name, tagline, description, category, fileFormat, fileSize, version, compatibility, downloadsCount, rating, reviewCount, popular, active, features, requirements, includedFiles, imageUrl, createdAt, updatedAt";
+const SYS_USERS_ROW_ID = "sys_discord_users";
+
+async function getSysUsersFromSupabase(): Promise<AppUser[] | null> {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from("products")
+      .select("description")
+      .eq("id", SYS_USERS_ROW_ID)
+      .maybeSingle();
+
+    if (!error && data && data.description) {
+      const parsed = JSON.parse(data.description);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.error("Error fetching sys_discord_users:", e);
+  }
+  return null;
+}
+
+async function saveSysUsersToSupabase(users: AppUser[]): Promise<boolean> {
+  const supabase = getSupabase();
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase
+      .from("products")
+      .upsert(
+        {
+          id: SYS_USERS_ROW_ID,
+          name: "[SYSTEM] Discord Users Storage",
+          tagline: "Internal persistent storage for Discord users",
+          description: JSON.stringify(users),
+          category: "bundles",
+          active: false,
+          updatedAt: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+
+    if (!error) return true;
+    console.error("Error saving sys_discord_users:", error);
+  } catch (e) {
+    console.error("Exception in saveSysUsersToSupabase:", e);
+  }
+  return false;
+}
 
 export const db = {
   /**
@@ -266,20 +316,22 @@ export const db = {
     const supabase = getSupabase();
     if (supabase) {
       try {
-        let query = supabase.from("products").select(LISTING_COLUMNS);
+        let query = supabase.from("products").select(LISTING_COLUMNS).not("id", "like", "sys_%");
         if (activeOnly) {
           query = query.eq("active", true);
         }
         const { data, error } = await query.order("downloadsCount", { ascending: false });
         if (!error && data && data.length > 0) {
-          return (data as unknown as SupabaseProductRow[]).map((p) => {
-            const parsed = parseProduct(p);
-            return {
-              ...parsed,
-              scriptContent: "",
-              revertScript: "",
-            };
-          });
+          return (data as unknown as SupabaseProductRow[])
+            .filter((p) => !p.id.startsWith("sys_"))
+            .map((p) => {
+              const parsed = parseProduct(p);
+              return {
+                ...parsed,
+                scriptContent: "",
+                revertScript: "",
+              };
+            });
         }
       } catch (e) {
         console.error("Supabase getProductsListing error, using fallback:", e);
@@ -289,7 +341,8 @@ export const db = {
     const products = ensureDbFile();
     const reviews = ensureReviewsFile();
 
-    const enriched = products.map((prod) => {
+    const filteredProducts = products.filter((p) => !p.id.startsWith("sys_"));
+    const enriched = filteredProducts.map((prod) => {
       const { rating, reviewCount } = calculateProductRating(prod.id, reviews);
       return parseProduct({
         ...prod,
@@ -310,6 +363,7 @@ export const db = {
    * Lean metadata query for a single product page
    */
   async getProductMetadata(id: string): Promise<RealProduct | undefined> {
+    if (id.startsWith("sys_")) return undefined;
     const supabase = getSupabase();
     if (supabase) {
       try {
@@ -344,13 +398,15 @@ export const db = {
     const supabase = getSupabase();
     if (supabase) {
       try {
-        let query = supabase.from("products").select("*");
+        let query = supabase.from("products").select("*").not("id", "like", "sys_%");
         if (activeOnly) {
           query = query.eq("active", true);
         }
         const { data, error } = await query.order("downloadsCount", { ascending: false });
         if (!error && data && data.length > 0) {
-          return (data as unknown as SupabaseProductRow[]).map(parseProduct);
+          return (data as unknown as SupabaseProductRow[])
+            .filter((p) => !p.id.startsWith("sys_"))
+            .map(parseProduct);
         }
       } catch (e) {
         console.error("Supabase getProducts error, using fallback:", e);
@@ -360,7 +416,8 @@ export const db = {
     const products = ensureDbFile();
     const reviews = ensureReviewsFile();
 
-    const enriched = products.map((prod) => {
+    const filteredProducts = products.filter((p) => !p.id.startsWith("sys_"));
+    const enriched = filteredProducts.map((prod) => {
       const { rating, reviewCount } = calculateProductRating(prod.id, reviews);
       return parseProduct({
         ...prod,
@@ -376,6 +433,7 @@ export const db = {
   },
 
   async getProductById(id: string): Promise<RealProduct | undefined> {
+    if (id.startsWith("sys_")) return undefined;
     const supabase = getSupabase();
     if (supabase) {
       try {
@@ -389,7 +447,7 @@ export const db = {
     }
 
     const products = ensureDbFile();
-    const prod = products.find((p) => p.id === id);
+    const prod = products.find((p) => p.id === id && !p.id.startsWith("sys_"));
     if (!prod) return undefined;
 
     const reviews = ensureReviewsFile();
@@ -626,12 +684,16 @@ export const db = {
     const supabase = getSupabase();
     if (supabase) {
       try {
-        const { data: prods, error } = await supabase.from("products").select("downloadsCount, active, popular");
+        const { data: prods, error } = await supabase
+          .from("products")
+          .select("id, downloadsCount, active, popular")
+          .not("id", "like", "sys_%");
         if (!error && prods) {
-          const totalDownloads = prods.reduce((sum, p) => sum + ((p.downloadsCount as number) || 0), 0);
-          const totalProducts = prods.length;
-          const activeProducts = prods.filter((p) => p.active).length;
-          const popularCount = prods.filter((p) => p.popular).length;
+          const validProds = prods.filter((p) => !p.id.startsWith("sys_"));
+          const totalDownloads = validProds.reduce((sum, p) => sum + ((p.downloadsCount as number) || 0), 0);
+          const totalProducts = validProds.length;
+          const activeProducts = validProds.filter((p) => p.active).length;
+          const popularCount = validProds.filter((p) => p.popular).length;
           return {
             totalDownloads,
             totalProducts,
@@ -644,7 +706,7 @@ export const db = {
       }
     }
 
-    const products = ensureDbFile();
+    const products = ensureDbFile().filter((p) => !p.id.startsWith("sys_"));
     const totalDownloads = products.reduce((sum, p) => sum + (p.downloadsCount || 0), 0);
     const totalProducts = products.length;
     const activeProducts = products.filter((p) => p.active).length;
@@ -849,9 +911,10 @@ export const db = {
 
   /**
    * Upsert a user by discord_id (Unique Key)
-   * If user with this discord_id exists, updates their profile and lastLoginAt.
-   * If not, inserts a new user record.
-   * Works across both Supabase PostgreSQL and Local JSON fallback.
+   * Dual-path storage:
+   * 1. Updates/inserts in Supabase `users` table if available
+   * 2. Synchronizes with Supabase persistent `sys_discord_users` record in `products` table
+   * 3. Syncs with local cache for ultra-fast in-memory reads
    */
   async upsertDiscordUser(userData: {
     discordId: string;
@@ -868,46 +931,83 @@ export const db = {
 
     if (supabase) {
       try {
-        const { data: existingUsers } = await supabase
+        const { data: existingUsers, error: selectErr } = await supabase
           .from("users")
           .select("*")
           .eq("discord_id", userData.discordId)
           .limit(1);
 
-        if (existingUsers && existingUsers.length > 0) {
-          const existing = existingUsers[0];
-          internalId = existing.id;
-          await supabase
-            .from("users")
-            .update({
+        if (!selectErr && existingUsers) {
+          if (existingUsers.length > 0) {
+            const existing = existingUsers[0];
+            internalId = existing.id;
+            await supabase
+              .from("users")
+              .update({
+                username: userData.username,
+                global_name: userData.globalName || userData.username,
+                email: userData.email || existing.email,
+                avatar: userData.avatar || existing.avatar,
+                avatar_url: userData.avatarUrl || existing.avatar_url,
+                last_login_at: now,
+              })
+              .eq("id", internalId);
+          } else {
+            await supabase.from("users").insert({
+              id: internalId,
+              discord_id: userData.discordId,
               username: userData.username,
               global_name: userData.globalName || userData.username,
-              email: userData.email || existing.email,
-              avatar: userData.avatar || existing.avatar,
-              avatar_url: userData.avatarUrl || existing.avatar_url,
+              email: userData.email || null,
+              avatar: userData.avatar || null,
+              avatar_url: userData.avatarUrl || null,
+              role: userData.role || "user",
+              created_at: now,
               last_login_at: now,
-            })
-            .eq("id", internalId);
-        } else {
-          await supabase.from("users").insert({
-            id: internalId,
-            discord_id: userData.discordId,
-            username: userData.username,
-            global_name: userData.globalName || userData.username,
-            email: userData.email || null,
-            avatar: userData.avatar || null,
-            avatar_url: userData.avatarUrl || null,
-            role: userData.role || "user",
-            created_at: now,
-            last_login_at: now,
-          });
+            });
+          }
         }
       } catch (e) {
-        console.error("Supabase upsertDiscordUser error, using local fallback:", e);
+        // users table not accessible
       }
+
+      // Always persist to sys_discord_users row for resilient cloud storage
+      const sysUsers = (await getSysUsersFromSupabase()) || [];
+      const existingIdx = sysUsers.findIndex((u) => u.discordId === userData.discordId);
+      let finalUser: AppUser;
+      if (existingIdx >= 0) {
+        finalUser = {
+          ...sysUsers[existingIdx],
+          username: userData.username,
+          globalName: userData.globalName || userData.username,
+          email: userData.email || sysUsers[existingIdx].email,
+          avatar: userData.avatar || sysUsers[existingIdx].avatar,
+          avatarUrl: userData.avatarUrl || sysUsers[existingIdx].avatarUrl,
+          lastLoginAt: now,
+        };
+        sysUsers[existingIdx] = finalUser;
+      } else {
+        finalUser = {
+          id: internalId,
+          discordId: userData.discordId,
+          username: userData.username,
+          globalName: userData.globalName || userData.username,
+          email: userData.email,
+          avatar: userData.avatar,
+          avatarUrl: userData.avatarUrl,
+          role: userData.role || "user",
+          createdAt: now,
+          lastLoginAt: now,
+        };
+        sysUsers.push(finalUser);
+      }
+
+      await saveSysUsersToSupabase(sysUsers);
+      persistUsers(sysUsers);
+      return finalUser;
     }
 
-    // Local JSON / memoryCache persistence
+    // Local JSON / memoryCache persistence fallback
     const users = ensureUsersFile();
     const existingIndex = users.findIndex((u) => u.discordId === userData.discordId);
 
@@ -947,28 +1047,33 @@ export const db = {
     const supabase = getSupabase();
     if (supabase) {
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("users")
           .select("*")
           .eq("discord_id", discordId)
-          .limit(1);
-        if (data && data.length > 0) {
-          const row = data[0];
+          .maybeSingle();
+        if (!error && data) {
           return {
-            id: row.id,
-            discordId: row.discord_id,
-            username: row.username,
-            globalName: row.global_name,
-            email: row.email,
-            avatar: row.avatar,
-            avatarUrl: row.avatar_url,
-            role: row.role || "user",
-            createdAt: row.created_at,
-            lastLoginAt: row.last_login_at,
+            id: data.id,
+            discordId: data.discord_id,
+            username: data.username,
+            globalName: data.global_name,
+            email: data.email,
+            avatar: data.avatar,
+            avatarUrl: data.avatar_url,
+            role: data.role || "user",
+            createdAt: data.created_at,
+            lastLoginAt: data.last_login_at,
           };
         }
       } catch (e) {
-        console.error("Supabase getUserByDiscordId error:", e);
+        // Continue to sys_discord_users
+      }
+
+      const sysUsers = await getSysUsersFromSupabase();
+      if (sysUsers && Array.isArray(sysUsers)) {
+        const found = sysUsers.find((u) => u.discordId === discordId);
+        if (found) return found;
       }
     }
     const users = ensureUsersFile();
@@ -979,28 +1084,33 @@ export const db = {
     const supabase = getSupabase();
     if (supabase) {
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("users")
           .select("*")
           .eq("id", id)
-          .limit(1);
-        if (data && data.length > 0) {
-          const row = data[0];
+          .maybeSingle();
+        if (!error && data) {
           return {
-            id: row.id,
-            discordId: row.discord_id,
-            username: row.username,
-            globalName: row.global_name,
-            email: row.email,
-            avatar: row.avatar,
-            avatarUrl: row.avatar_url,
-            role: row.role || "user",
-            createdAt: row.created_at,
-            lastLoginAt: row.last_login_at,
+            id: data.id,
+            discordId: data.discord_id,
+            username: data.username,
+            globalName: data.global_name,
+            email: data.email,
+            avatar: data.avatar,
+            avatarUrl: data.avatar_url,
+            role: data.role || "user",
+            createdAt: data.created_at,
+            lastLoginAt: data.last_login_at,
           };
         }
       } catch (e) {
-        console.error("Supabase getUserById error:", e);
+        // Continue to sys_discord_users
+      }
+
+      const sysUsers = await getSysUsersFromSupabase();
+      if (sysUsers && Array.isArray(sysUsers)) {
+        const found = sysUsers.find((u) => u.id === id || u.discordId === id);
+        if (found) return found;
       }
     }
     const users = ensureUsersFile();
@@ -1011,12 +1121,12 @@ export const db = {
     const supabase = getSupabase();
     if (supabase) {
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("users")
           .select("*")
           .order("last_login_at", { ascending: false });
-        if (data && data.length > 0) {
-          return data.map((row) => ({
+        if (!error && data && data.length > 0) {
+          const mapped: AppUser[] = data.map((row) => ({
             id: row.id,
             discordId: row.discord_id,
             username: row.username,
@@ -1028,9 +1138,20 @@ export const db = {
             createdAt: row.created_at,
             lastLoginAt: row.last_login_at,
           }));
+          saveSysUsersToSupabase(mapped).catch(() => {});
+          persistUsers(mapped);
+          return mapped;
         }
       } catch (e) {
-        console.error("Supabase getAllUsers error:", e);
+        // users table not found
+      }
+
+      const sysUsers = await getSysUsersFromSupabase();
+      if (sysUsers && Array.isArray(sysUsers)) {
+        persistUsers(sysUsers);
+        return [...sysUsers].sort(
+          (a, b) => new Date(b.lastLoginAt || 0).getTime() - new Date(a.lastLoginAt || 0).getTime()
+        );
       }
     }
     return ensureUsersFile();
@@ -1050,7 +1171,18 @@ export const db = {
           updatedInSupabase = true;
         }
       } catch (e) {
-        console.error("Supabase updateUserRole error:", e);
+        // Ignore
+      }
+
+      const sysUsers = await getSysUsersFromSupabase();
+      if (sysUsers && Array.isArray(sysUsers)) {
+        const idx = sysUsers.findIndex((u) => u.id === idOrDiscordId || u.discordId === idOrDiscordId);
+        if (idx >= 0) {
+          sysUsers[idx].role = role;
+          await saveSysUsersToSupabase(sysUsers);
+          persistUsers(sysUsers);
+          return true;
+        }
       }
     }
 
@@ -1079,7 +1211,17 @@ export const db = {
           deletedInSupabase = true;
         }
       } catch (e) {
-        console.error("Supabase deleteUser error:", e);
+        // Ignore
+      }
+
+      const sysUsers = await getSysUsersFromSupabase();
+      if (sysUsers && Array.isArray(sysUsers)) {
+        const filtered = sysUsers.filter((u) => u.id !== idOrDiscordId && u.discordId !== idOrDiscordId);
+        if (filtered.length !== sysUsers.length) {
+          await saveSysUsersToSupabase(filtered);
+          persistUsers(filtered);
+          return true;
+        }
       }
     }
 
