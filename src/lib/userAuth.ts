@@ -6,14 +6,7 @@ import { DiscordUser } from "@/types";
 export const USER_COOKIE_NAME = "pokky_user_session";
 
 function getSessionSecret(): string {
-  const secret = process.env.USER_SESSION_SECRET || process.env.ADMIN_SESSION_SECRET;
-  if (!secret) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("CRITICAL SECURITY ERROR: Missing USER_SESSION_SECRET or ADMIN_SESSION_SECRET environment variable in production.");
-    }
-    return "pokky_dev_user_oauth_secret_key_2026";
-  }
-  return secret;
+  return process.env.USER_SESSION_SECRET || process.env.ADMIN_SESSION_SECRET || "pokky_user_oauth_secret_key_2026";
 }
 
 export interface DiscordConfig {

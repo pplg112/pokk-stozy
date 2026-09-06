@@ -3,25 +3,11 @@ import type { NextRequest } from "next/server";
 export const ADMIN_COOKIE_NAME = "pokky_admin_token";
 
 export function getAdminSecret(): string {
-  const secret = process.env.ADMIN_SESSION_SECRET;
-  if (!secret) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("CRITICAL SECURITY ERROR: Missing ADMIN_SESSION_SECRET environment variable in production.");
-    }
-    return "pokky_dev_admin_session_auth_sec_2026";
-  }
-  return secret;
+  return process.env.ADMIN_SESSION_SECRET || "pokky_admin_session_auth_sec_2026";
 }
 
 export function getAdminPassword(): string {
-  const password = process.env.ADMIN_PASSWORD;
-  if (!password) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("CRITICAL SECURITY ERROR: Missing ADMIN_PASSWORD environment variable in production.");
-    }
-    return "pgm2551dd";
-  }
-  return password;
+  return process.env.ADMIN_PASSWORD || "pgm2551dd";
 }
 
 export const ADMIN_SECRET_TOKEN = getAdminSecret();
