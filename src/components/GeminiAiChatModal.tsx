@@ -40,11 +40,11 @@ interface GeminiAiChatModalProps {
 }
 
 const QUICK_PROMPTS = [
-  { label: "⚡ ดัน FPS Valorant", query: "เล่น Valorant แล้วเฟรมตก เล็งยิงไม่ค่อยคม แนะนำสคริปต์ปรับแต่งหน่อยครับ" },
-  { label: "🚗 แก้ FiveM กระตุกในเมือง", query: "เล่น FiveM ขับรถเร็วๆ แล้วแมพโหลดไม่ทัน เฟรมดรอป มีตัวช่วยมั้ยครับ" },
-  { label: "🌐 ลด Ping & เน็ตแล็ก", query: "เล่นเกมออนไลน์แล้วปิงแกว่ง Packet loss ขึ้นบ่อย แก้ยังไงดีครับ" },
-  { label: "🎯 ลด Input Delay เมาส์", query: "อยากลด Input Delay เมาส์และคีย์บอร์ดให้ตอบสนองไวขึ้น ต้องใช้ตัวไหนครับ" },
-  { label: "🧹 เคลียร์ RAM & ขยะ Win 11", query: "Windows 11 แรม 8GB-16GB รู้สึกเครื่องหน่วงและกินแรมเยอะ แนะนำตัวล้างระบบหน่อยครับ" },
+  { label: "ดัน FPS Valorant", query: "เล่น Valorant แล้วเฟรมตก เล็งยิงไม่ค่อยคม แนะนำสคริปต์ปรับแต่งหน่อยครับ" },
+  { label: "แก้ FiveM กระตุกในเมือง", query: "เล่น FiveM ขับรถเร็วๆ แล้วแมพโหลดไม่ทัน เฟรมดรอป มีตัวช่วยมั้ยครับ" },
+  { label: "ลด Ping & เน็ตแล็ก", query: "เล่นเกมออนไลน์แล้วปิงแกว่ง Packet loss ขึ้นบ่อย แก้ยังไงดีครับ" },
+  { label: "ลด Input Delay เมาส์", query: "อยากลด Input Delay เมาส์และคีย์บอร์ดให้ตอบสนองไวขึ้น ต้องใช้ตัวไหนครับ" },
+  { label: "เคลียร์ RAM & ขยะ Win 11", query: "Windows 11 แรม 8GB-16GB รู้สึกเครื่องหน่วงและกินแรมเยอะ แนะนำตัวล้างระบบหน่อยครับ" },
 ];
 
 export const GeminiAiChatModal: React.FC<GeminiAiChatModalProps> = ({
@@ -59,7 +59,7 @@ export const GeminiAiChatModal: React.FC<GeminiAiChatModalProps> = ({
     {
       id: "welcome",
       role: "assistant",
-      content: `👋 **ยินดีต้อนรับสู่ Pokky Gemini AI Assistant!**
+      content: `**ยินดีต้อนรับสู่ Pokky Gemini AI Assistant!**
 
 ผมคือ AI ผู้ช่วยวิเคราะห์และแนะนำการปรับแต่ง PC สำหรับเกมเมอร์ประจำ **Pokky Stozy**
 คุณสามารถบอกชื่อเกมที่คุณเล่น (เช่น Valorant, FiveM, Apex) หรืออาการที่พบ (เฟรมตก, ปิงแกว่ง, เมาส์หน่วง) เพื่อให้ผมแนะนำสคริปต์ฟรีที่ตรงจุดที่สุดได้เลยครับ!`,
@@ -176,7 +176,7 @@ export const GeminiAiChatModal: React.FC<GeminiAiChatModalProps> = ({
         const errorMsg: Message = {
           id: "err-" + Date.now(),
           role: "assistant",
-          content: `⚠️ เกิดข้อผิดพลาด: ${data.error || "ไม่สามารถเชื่อมต่อระบบ AI ได้"} กรุณาลองใหม่อีกครั้งครับ`,
+          content: `เกิดข้อผิดพลาด: ${data.error || "ไม่สามารถเชื่อมต่อระบบ AI ได้"} กรุณาลองใหม่อีกครั้งครับ`,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         };
         setMessages((prev) => [...prev, errorMsg]);
@@ -185,7 +185,7 @@ export const GeminiAiChatModal: React.FC<GeminiAiChatModalProps> = ({
       const errorMsg: Message = {
         id: "err-" + Date.now(),
         role: "assistant",
-        content: "⚠️ ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้งครับ",
+        content: "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้งครับ",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -206,7 +206,7 @@ export const GeminiAiChatModal: React.FC<GeminiAiChatModalProps> = ({
       {
         id: "welcome",
         role: "assistant",
-        content: `👋 เริ่มการสนทนาใหม่แล้วครับ!
+        content: `เริ่มการสนทนาใหม่แล้วครับ!
 
 บอกชื่อเกม หรือปัญหาเครื่องที่คุณต้องการแก้ไขได้เลยครับ ผมพร้อมวิเคราะห์และแนะนำสคริปต์ที่ตรงจุดให้ทันที`,
         source: "Google Gemini AI",

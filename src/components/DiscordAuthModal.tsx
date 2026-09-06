@@ -15,7 +15,8 @@ import {
   Lock,
   Sparkles,
   Key,
-  HelpCircle
+  HelpCircle,
+  AlertTriangle
 } from "lucide-react";
 import { DiscordUser } from "@/types";
 
@@ -372,7 +373,8 @@ export const DiscordAuthModal: React.FC<DiscordAuthModalProps> = ({
 
             {error && (
               <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2 font-mono">
-                <span>⚠️ {error}</span>
+                <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" />
+                <span>{error}</span>
               </div>
             )}
 

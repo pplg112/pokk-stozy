@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDiscordOAuthUrl, isDiscordConfigured, generateSignedOAuthState } from "@/lib/userAuth";
+import { getDiscordOAuthUrl, isDiscordConfigured, generateSignedOAuthState, sanitizeReturnUrl } from "@/lib/userAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,8 @@ export async function GET(request: NextRequest) {
   const redirectUri = `${proto}://${host}/api/auth/discord/callback`;
 
   const { searchParams } = new URL(request.url);
-  const returnUrl = searchParams.get("returnUrl") || "/";
+  const rawReturnUrl = searchParams.get("returnUrl") || "/";
+  const returnUrl = sanitizeReturnUrl(rawReturnUrl);
 
   // Check if Discord OAuth2 credentials are configured
   if (!isDiscordConfigured()) {

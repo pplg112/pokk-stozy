@@ -30,6 +30,12 @@ function isSafeRedirectUrl(urlStr: string): boolean {
   }
 }
 
+// Convert line endings to Windows standard CRLF (\r\n) so cmd.exe, regedit, and PowerShell execute flawlessly
+function toWindowsCrlf(text: string): string {
+  if (!text) return "";
+  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").replace(/\n/g, "\r\n");
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -132,7 +138,8 @@ export async function GET(
     if (isRevert) {
       const filename = `REVERT_${safeFilename}.bat`;
       const fallbackName = `REVERT_${asciiFallback}.bat`;
-      const content = product.revertScript || `@echo off\ntitle Revert - ${product.name}\necho คืนค่าเดิมของระบบเรียบร้อย\npause`;
+      const rawContent = product.revertScript || `@echo off\ntitle Revert - ${product.name}\necho คืนค่าเดิมของระบบเรียบร้อย\npause`;
+      const content = toWindowsCrlf(rawContent);
       return new NextResponse(content, {
         status: 200,
         headers: {
@@ -181,8 +188,9 @@ export async function GET(
     const ext = ["BAT", "CMD", "REG", "PS1"].includes(rawExt) ? rawExt.toLowerCase() : "bat";
     const filename = `${safeFilename}.${ext}`;
     const fallbackName = `${asciiFallback}.${ext}`;
+    const normalizedScript = toWindowsCrlf(content);
 
-    return new NextResponse(content, {
+    return new NextResponse(normalizedScript, {
       status: 200,
       headers: {
         "Content-Type": `application/x-${ext}; charset=utf-8`,

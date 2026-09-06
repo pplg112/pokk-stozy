@@ -144,12 +144,32 @@ export function getDiscordOAuthUrl(redirectUri: string, state: string = "pokky_a
 }
 
 /**
+ * Strictly sanitize returnUrl against Open Redirect and protocol-relative exploitation
+ */
+export function sanitizeReturnUrl(url: string | null | undefined): string {
+  if (!url || typeof url !== "string") return "/";
+  const trimmed = url.trim();
+  // Must start with single slash, not protocol-relative (//), not backslash (/\\), and not contain protocol scheme
+  if (
+    trimmed.startsWith("/") &&
+    !trimmed.startsWith("//") &&
+    !trimmed.startsWith("/\\") &&
+    !trimmed.includes(":") &&
+    !trimmed.includes("\0")
+  ) {
+    return trimmed;
+  }
+  return "/";
+}
+
+/**
  * Generate a cryptographically signed state token containing returnUrl and timestamp to prevent CSRF
  */
 export async function generateSignedOAuthState(returnUrl: string = "/"): Promise<string> {
+  const safeReturnUrl = sanitizeReturnUrl(returnUrl);
   const nonce = Math.random().toString(36).substring(2, 10);
   const ts = Date.now();
-  const payload = JSON.stringify({ returnUrl, nonce, ts });
+  const payload = JSON.stringify({ returnUrl: safeReturnUrl, nonce, ts });
   const b64 = Buffer.from(payload, "utf-8").toString("base64url");
   const sig = await hmacSign(b64, SESSION_SECRET);
   return `${b64}.${sig}`;
@@ -166,7 +186,7 @@ export async function verifySignedOAuthState(stateString: string | null | undefi
   if (parts.length !== 2) {
     try {
       const parsed = JSON.parse(Buffer.from(stateString, "base64url").toString("utf-8"));
-      return { valid: true, returnUrl: parsed?.returnUrl || "/" };
+      return { valid: true, returnUrl: sanitizeReturnUrl(parsed?.returnUrl) };
     } catch {
       return { valid: false, returnUrl: "/" };
     }
@@ -183,9 +203,9 @@ export async function verifySignedOAuthState(stateString: string | null | undefi
     const parsed = JSON.parse(raw);
     // State is valid for up to 15 minutes
     if (parsed.ts && Date.now() - parsed.ts > 15 * 60 * 1000) {
-      return { valid: false, returnUrl: parsed.returnUrl || "/" };
+      return { valid: false, returnUrl: sanitizeReturnUrl(parsed.returnUrl) };
     }
-    const returnUrl = typeof parsed.returnUrl === "string" && parsed.returnUrl.startsWith("/") ? parsed.returnUrl : "/";
+    const returnUrl = sanitizeReturnUrl(parsed.returnUrl);
     return { valid: true, returnUrl };
   } catch {
     return { valid: false, returnUrl: "/" };

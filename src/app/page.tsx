@@ -14,7 +14,7 @@ import { CyberBackground } from "@/components/CyberBackground";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { DIGITAL_PRODUCTS } from "@/data/products";
 import { DigitalProduct, DownloadRecord, DiscordUser } from "@/types";
-import { ArrowUp, Sparkles, Bot, ArrowRight } from "lucide-react";
+import { ArrowUp, Sparkles, Bot, ArrowRight, Zap, Flame, Wifi, Cpu } from "lucide-react";
 import Link from "next/link";
 
 export default function HomePage() {
@@ -192,16 +192,18 @@ export default function HomePage() {
       <main className="flex-1 relative z-10">
         {/* Vibrant Esports Hero */}
         <StoreHero onOpenAiChat={() => handleOpenAiChat()} currentUser={currentUser} />
-        
+
         {/* Products Grid */}
-        <ProductCatalog
-          products={productsList}
-          currentUser={currentUser}
-          onBuyNow={handleStartDownload}
-          onViewDetails={handleOpenProduct}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-        />
+        <div id="products">
+          <ProductCatalog
+            products={productsList}
+            currentUser={currentUser}
+            onBuyNow={handleStartDownload}
+            onViewDetails={handleOpenProduct}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
+        </div>
         
         {/* Gemini AI PC Optimizer Assistant Banner - Sleek Dark Theme */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -230,25 +232,29 @@ export default function HomePage() {
                     onClick={() => handleOpenAiChat("เล่น Valorant แล้วเฟรมตก เล็งยิงไม่ค่อยคม แนะนำสคริปต์ปรับแต่งหน่อยครับ")}
                     className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-green-500/20 border border-white/10 hover:border-green-500/40 text-xs text-slate-300 hover:text-green-300 transition-all cursor-pointer flex items-center gap-1.5 group active:scale-95"
                   >
-                    <span>⚡ ดัน FPS Valorant</span>
+                    <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>ดัน FPS Valorant</span>
                   </button>
                   <button
                     onClick={() => handleOpenAiChat("เล่น FiveM ขับรถเร็วๆ แล้วแมพโหลดไม่ทัน เฟรมดรอป มีตัวช่วยมั้ยครับ")}
                     className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-green-500/20 border border-white/10 hover:border-green-500/40 text-xs text-slate-300 hover:text-green-300 transition-all cursor-pointer flex items-center gap-1.5 group active:scale-95"
                   >
-                    <span>🚗 แก้ FiveM กระตุกในเมือง</span>
+                    <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                    <span>แก้ FiveM กระตุกในเมือง</span>
                   </button>
                   <button
                     onClick={() => handleOpenAiChat("เล่นเกมออนไลน์แล้วปิงแกว่ง Packet loss ขึ้นบ่อย แก้ยังไงดีครับ")}
                     className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-green-500/20 border border-white/10 hover:border-green-500/40 text-xs text-slate-300 hover:text-green-300 transition-all cursor-pointer flex items-center gap-1.5 group active:scale-95"
                   >
-                    <span>🌐 ลด Ping & Packet Loss</span>
+                    <Wifi className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span>ลด Ping & Packet Loss</span>
                   </button>
                   <button
                     onClick={() => handleOpenAiChat("Windows 11 แรม 8GB-16GB รู้สึกเครื่องหน่วงและกินแรมเยอะ แนะนำตัวล้างระบบหน่อยครับ")}
                     className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-green-500/20 border border-white/10 hover:border-green-500/40 text-xs text-slate-300 hover:text-green-300 transition-all cursor-pointer flex items-center gap-1.5 group active:scale-95"
                   >
-                    <span>🧹 เคลียร์ RAM Win 11</span>
+                    <Cpu className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>เคลียร์ RAM Win 11</span>
                   </button>
                 </div>
               </div>

@@ -5,12 +5,11 @@ import Link from "next/link";
 import { DigitalProduct, DiscordUser } from "@/types";
 import { DiscordIcon } from "@/components/icons/DiscordIcon";
 import { 
-  Zap, 
   FileCode2, 
   Star, 
-  Eye,
-  Download,
-  CheckCircle2
+  Eye, 
+  Download, 
+  CheckCircle2 
 } from "lucide-react";
 
 interface ProductCardProps {

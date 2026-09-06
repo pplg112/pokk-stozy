@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ShieldCheck, Download, RotateCcw, ArrowDown, HelpCircle, Sparkles } from "lucide-react";
+import { ShieldCheck, RotateCcw, ArrowDown, HelpCircle, Sparkles } from "lucide-react";
 import { DiscordIcon } from "@/components/icons/DiscordIcon";
 import { DiscordUser } from "@/types";
 
