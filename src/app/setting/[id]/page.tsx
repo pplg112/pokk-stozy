@@ -42,6 +42,7 @@ export default function SettingDetailPage({ params }: PageProps) {
   const productId = resolvedParams.id;
 
   const [product, setProduct] = useState<DigitalProduct | null>(null);
+  const [allProducts, setAllProducts] = useState<DigitalProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"overview" | "code" | "reviews">("overview");
   const [copiedLink, setCopiedLink] = useState(false);
@@ -79,22 +80,32 @@ export default function SettingDetailPage({ params }: PageProps) {
     checkUserSession();
   }, []);
 
-  // Fetch product data
+  // Fetch product data & related products
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
-        const res = await fetch(`/api/products/${productId}`, { cache: "no-store" });
-        if (res.ok) {
-          const data = await res.json();
+        const [singleRes, listRes] = await Promise.allSettled([
+          fetch(`/api/products/${productId}`, { cache: "no-store" }),
+          fetch("/api/products", { cache: "no-store" }),
+        ]);
+
+        if (singleRes.status === "fulfilled" && singleRes.value.ok) {
+          const data = await singleRes.value.json();
           if (data.success && data.product) {
             setProduct(data.product);
-            return;
+          }
+        } else {
+          const staticFound = DIGITAL_PRODUCTS.find((p) => p.id === productId);
+          setProduct(staticFound || null);
+        }
+
+        if (listRes.status === "fulfilled" && listRes.value.ok) {
+          const listData = await listRes.value.json();
+          if (listData.success && Array.isArray(listData.products)) {
+            setAllProducts(listData.products);
           }
         }
-        // Fallback search in static products
-        const staticFound = DIGITAL_PRODUCTS.find((p) => p.id === productId);
-        setProduct(staticFound || null);
       } catch {
         const staticFound = DIGITAL_PRODUCTS.find((p) => p.id === productId);
         setProduct(staticFound || null);
@@ -168,7 +179,9 @@ export default function SettingDetailPage({ params }: PageProps) {
     );
   }
 
-  const relatedProducts = DIGITAL_PRODUCTS.filter((p) => p.id !== product.id).slice(0, 3);
+  const relatedProducts = (allProducts.length > 0 ? allProducts : DIGITAL_PRODUCTS)
+    .filter((p) => p.id !== product.id)
+    .slice(0, 3);
 
   return (
     <div className="min-h-screen bg-[#07080c] text-slate-100 flex flex-col font-sans selection:bg-green-400 selection:text-slate-950 relative overflow-x-hidden">
@@ -517,13 +530,19 @@ export default function SettingDetailPage({ params }: PageProps) {
                   className="p-4 rounded-2xl bg-[#0b0e17] border border-white/10 hover:border-green-400/60 transition-all flex flex-col justify-between group"
                 >
                   <div>
-                    <div className="aspect-video rounded-xl overflow-hidden bg-black/60 mb-3 border border-white/5">
-                      <img
-                        src={rel.imageUrl}
-                        alt={rel.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
-                    </div>
+                    {rel.imageUrl ? (
+                      <div className="aspect-video rounded-xl overflow-hidden bg-black/60 mb-3 border border-white/5">
+                        <img
+                          src={rel.imageUrl}
+                          alt={rel.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                      </div>
+                    ) : (
+                      <div className="aspect-video rounded-xl bg-gradient-to-br from-[#0c0e17] to-black mb-3 border border-white/10 flex items-center justify-center">
+                        <FileCode2 className="w-8 h-8 text-green-400/60" />
+                      </div>
+                    )}
                     <h4 className="font-bold text-sm text-white group-hover:text-green-300 transition-colors">
                       {rel.name}
                     </h4>

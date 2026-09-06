@@ -22,7 +22,6 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "cdn.discordapp.com" },
       { protocol: "https", hostname: "*.supabase.co" },
-      { protocol: "https", hostname: "images.unsplash.com" },
     ],
   },
   async headers() {

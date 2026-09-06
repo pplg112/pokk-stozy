@@ -25,15 +25,6 @@ import {
   Loader2,
   Key
 } from "lucide-react";
-
-const CATEGORY_COVER_PRESETS: Record<string, string> = {
-  "bundles": "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?auto=format&fit=crop&w=800&q=80",
-  "os-scripts": "https://images.unsplash.com/photo-1591488320449-011701bb6704?auto=format&fit=crop&w=800&q=80",
-  "gpu-profiles": "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?auto=format&fit=crop&w=800&q=80",
-  "network": "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80",
-  "memory-bios": "https://images.unsplash.com/photo-1562976540-1502c2145186?auto=format&fit=crop&w=800&q=80",
-};
-
 export default function AdminDashboardPage() {
   const [products, setProducts] = useState<RealProduct[]>([]);
   const [stats, setStats] = useState({
@@ -239,7 +230,7 @@ export default function AdminDashboardPage() {
       compatibility: "Windows 10 / 11 (64-bit)",
       popular: false,
       active: true,
-      imageUrl: CATEGORY_COVER_PRESETS["bundles"],
+      imageUrl: "",
       downloadUrl: "",
       includedFiles: [],
       scriptContent: `@echo off\ntitle My Optimization Script\necho [POKKY STOZY] กำลังเริ่มการปรับแต่ง...\npause`,
@@ -261,7 +252,7 @@ export default function AdminDashboardPage() {
       compatibility: product.compatibility,
       popular: product.popular,
       active: product.active,
-      imageUrl: product.imageUrl || CATEGORY_COVER_PRESETS[product.category] || "",
+      imageUrl: product.imageUrl || "",
       downloadUrl: product.downloadUrl || "",
       includedFiles: product.includedFiles || [],
       scriptContent: product.scriptContent,
@@ -476,7 +467,7 @@ export default function AdminDashboardPage() {
           includedFiles: uploadedIncludedFiles.length > 0 ? uploadedIncludedFiles : prev.includedFiles,
           scriptContent: scriptContent,
           revertScript: d.revertScript || prev.revertScript,
-          imageUrl: prev.imageUrl || CATEGORY_COVER_PRESETS[d.category] || CATEGORY_COVER_PRESETS["bundles"],
+          imageUrl: prev.imageUrl || "",
         }));
 
         if (analyzeData.isGemini) {
@@ -1106,25 +1097,6 @@ export default function AdminDashboardPage() {
                   >
                     เลือกรูปจากเครื่อง
                   </button>
-                </div>
-
-                {/* Cover Presets */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[11px] text-slate-400 font-mono">ภาพตัวอย่าง Esports:</span>
-                  {Object.entries(CATEGORY_COVER_PRESETS).map(([catKey, url]) => (
-                    <button
-                      key={catKey}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, imageUrl: url })}
-                      className={`px-2.5 py-1 rounded-lg border text-[11px] font-mono transition-colors cursor-pointer ${
-                        formData.imageUrl === url
-                          ? "bg-green-500/20 text-green-300 border-green-500/40"
-                          : "bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white"
-                      }`}
-                    >
-                      {catKey}
-                    </button>
-                  ))}
                 </div>
               </div>
 
