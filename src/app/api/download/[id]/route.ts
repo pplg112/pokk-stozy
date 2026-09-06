@@ -109,7 +109,29 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const isRevert = searchParams.get("type") === "revert";
 
-    // Secure external redirect (SSRF & Open-Redirect protected)
+    // 1. Cloudflare R2 Secure Presigned Download (Discord Authenticated & Protected)
+    if (!isRevert && product.downloadUrl && product.downloadUrl.trim().startsWith("r2://")) {
+      try {
+        const { generateR2PresignedUrl, isR2Configured } = await import("@/lib/r2");
+        if (isR2Configured()) {
+          const r2Uri = product.downloadUrl.trim();
+          // Extract object key from r2://bucketName/packages/filename.ext
+          const objectKey = r2Uri.replace(/^r2:\/\/[^/]+\//, "");
+          const presignedGetUrl = generateR2PresignedUrl({
+            method: "GET",
+            key: objectKey,
+            expiresInSeconds: 180, // Valid for 3 minutes for secure browser download
+          });
+
+          await db.incrementDownload(id);
+          return NextResponse.redirect(presignedGetUrl, 302);
+        }
+      } catch (r2Err) {
+        console.error("Failed to generate R2 presigned download URL:", r2Err);
+      }
+    }
+
+    // 2. Secure external redirect (SSRF & Open-Redirect protected: Google Drive / Mediafire / Mega)
     if (!isRevert && product.downloadUrl && product.downloadUrl.trim().startsWith("http")) {
       const targetUrl = product.downloadUrl.trim();
       if (!isSafeRedirectUrl(targetUrl)) {
